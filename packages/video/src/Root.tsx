@@ -1,14 +1,15 @@
 import React from 'react';
-import {CalculateMetadataFunction, Composition} from 'remotion';
+import {CalculateMetadataFunction, Composition, Still} from 'remotion';
 import {CategoryVertical} from './CategoryVertical';
 import {BenchmarkSegment} from './BenchmarkSegment';
 import {CategoryWide} from './CategoryWide';
 import {LongVideo} from './LongVideo';
 import {ShortVideo} from './ShortVideo';
+import {Thumbnail} from './Thumbnail';
 import {demo2, demo3} from './data/demo';
 import {pickShortCategories} from './lib/rank';
 import {isComplete} from './lib/benchmark';
-import {BENCHMARK_SECONDS, categoryFrames, FPS, sequenceFrames} from './lib/timing';
+import {BENCHMARK_SECONDS, categoryFrames, FPS, longVideoFrames, shortVideoFrames} from './lib/timing';
 import {validateComparison} from './lib/validate';
 import {BenchmarkProps, SegmentProps, VideoProps} from './types';
 
@@ -29,12 +30,12 @@ const benchmarkMeta: CalculateMetadataFunction<BenchmarkProps> = ({props}) => {
 
 const longMeta: CalculateMetadataFunction<VideoProps> = ({props}) => {
   validateComparison(props.comparison);
-  return {durationInFrames: sequenceFrames(props.comparison)};
+  return {durationInFrames: longVideoFrames(props.comparison)};
 };
 
 const shortMeta: CalculateMetadataFunction<VideoProps> = ({props}) => {
   validateComparison(props.comparison);
-  return {durationInFrames: sequenceFrames(pickShortCategories(props.comparison))};
+  return {durationInFrames: shortVideoFrames(pickShortCategories(props.comparison))};
 };
 
 const wide = {width: 1920, height: 1080, fps: FPS} as const;
@@ -91,6 +92,13 @@ export const RemotionRoot: React.FC = () => (
           durationInFrames={900}
           defaultProps={{comparison: cmp}}
           calculateMetadata={shortMeta}
+        />
+        <Still
+          id={`Thumbnail${k}`}
+          component={Thumbnail}
+          width={1280}
+          height={720}
+          defaultProps={{comparison: cmp}}
         />
       </React.Fragment>
     ))}

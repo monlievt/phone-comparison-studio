@@ -25,6 +25,21 @@ export const benchmarkFrames = (cmp: Comparison): number =>
 export const sequenceFrames = (cmp: Comparison): number =>
   cmp.categories.reduce((sum, c) => sum + categoryFrames(c, cmp.phones.length), 0) + benchmarkFrames(cmp);
 
+export const INTRO_FRAMES = 5 * FPS;  // 150 frames (5s)
+export const RECAP_FRAMES = 8 * FPS;  // 240 frames (8s)
+export const OUTRO_FRAMES = 6 * FPS;  // 180 frames (6s)
+
+export const SHORT_HOOK_FRAMES = 2 * FPS;   // 60 frames (2s)
+export const SHORT_WINNER_FRAMES = 3 * FPS; // 90 frames (3s)
+
+// Total duration for complete Long Video composition
+export const longVideoFrames = (cmp: Comparison): number =>
+  INTRO_FRAMES + sequenceFrames(cmp) + RECAP_FRAMES + OUTRO_FRAMES;
+
+// Total duration for vertical Short Video composition
+export const shortVideoFrames = (shortCmp: Comparison): number =>
+  SHORT_HOOK_FRAMES + sequenceFrames(shortCmp) + SHORT_WINNER_FRAMES;
+
 // Timeline of one category segment (frames @30fps).
 export const T = {
   phoneIn: 6,
