@@ -8,3 +8,4 @@ export * from './tracker/tracker-service.js';
 export * from './fetcher/html-extractor.js';
 export * from './fetcher/polite-fetcher.js';
 export * from './pairs/pair-finder.js';
+export * from './specs/spec-collector.js';
