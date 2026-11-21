@@ -4,3 +4,5 @@
 export * from './schemas/index.js';
 export * from './types/video.js';
 export * from './db/migrate.js';
+export * from './db/queue.js';
+export * from './config/loader.js';
