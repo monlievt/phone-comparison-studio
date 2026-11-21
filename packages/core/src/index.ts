@@ -8,3 +8,4 @@ export * from './db/queue.js';
 export * from './config/loader.js';
 export * from './parse.js';
 export * from './verdict.js';
+export * from './glossary.js';
