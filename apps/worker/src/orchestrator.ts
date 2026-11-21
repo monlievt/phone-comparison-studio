@@ -8,6 +8,7 @@ import { Job, JobQueue, computeRanks, computeOverall, DEFAULT_CATEGORY_RULES, CA
 import { LlmRouter, buildCopyAllPrompt, CopyAllSchema, generateTemplateCopy } from '@phone-studio/ai';
 import { CandidateTrackerService, proposePairs, SpecCollector, PhoneCandidateForPair } from '@phone-studio/collectors';
 import { HttpPublisher, PublishRequest } from '@phone-studio/publisher';
+import { RemotionRenderService } from './render-service.js';
 
 export interface OrchestratorOptions {
   db: Database.Database;
@@ -15,6 +16,7 @@ export interface OrchestratorOptions {
   router: LlmRouter;
   publisher?: HttpPublisher;
   specCollector?: SpecCollector;
+  renderService?: RemotionRenderService;
 }
 
 export class PipelineOrchestrator {
@@ -24,6 +26,7 @@ export class PipelineOrchestrator {
   private publisher?: HttpPublisher;
   private specCollector: SpecCollector;
   private tracker: CandidateTrackerService;
+  private renderService?: RemotionRenderService;
 
   constructor(opts: OrchestratorOptions) {
     this.db = opts.db;
@@ -32,6 +35,7 @@ export class PipelineOrchestrator {
     this.publisher = opts.publisher;
     this.specCollector = opts.specCollector ?? new SpecCollector(this.db, this.router);
     this.tracker = new CandidateTrackerService(this.db);
+    this.renderService = opts.renderService;
   }
 
   async executeJob(job: Job): Promise<void> {
@@ -56,6 +60,18 @@ export class PipelineOrchestrator {
 
       case 'generate_copy':
         await this.handleGenerateCopy(job, payload);
+        break;
+
+      case 'render_preview':
+        await this.handleRenderPreview(job, payload);
+        break;
+
+      case 'render_final':
+        await this.handleRenderFinal(job, payload);
+        break;
+
+      case 'render_thumbnail':
+        await this.handleRenderThumbnail(job, payload);
         break;
 
       case 'handoff':
@@ -277,6 +293,124 @@ export class PipelineOrchestrator {
       .run('VIDEO_APPROVED', new Date().toISOString(), comparisonId);
 
     this.queue.complete(job.id, { copyGenerated: true, titles: copyData.titles });
+
+    // Next step in chain: trigger preview render
+    this.queue.enqueue('render_preview', { comparisonId, format: 'long' });
+  }
+
+  private async handleRenderPreview(job: Job, payload: any): Promise<void> {
+    if (!this.renderService) {
+      this.queue.log(job.id, 'warn', 'RenderService not configured, skipping preview render');
+      this.queue.complete(job.id, { skipped: true });
+      return;
+    }
+
+    const comparisonId = job.comparison_id ?? payload.comparisonId;
+    const format = payload.format ?? 'long';
+    this.queue.log(job.id, 'info', `Rendering preview video (${format}) for comparison ${comparisonId}...`);
+
+    const cmp = this.db.prepare('SELECT final_json FROM comparisons WHERE id = ?').get(comparisonId) as any;
+    if (!cmp?.final_json) {
+      throw new Error(`Comparison final_json not found for ${comparisonId}`);
+    }
+
+    const comparisonData = JSON.parse(cmp.final_json);
+    const n = comparisonData.phones.length;
+    const compId = format === 'short' ? `ShortVideo${n}` : `LongVideo${n}`;
+    const outputPath = `/Volumes/Backup/03_VIBE_CODING/smartphone comparation/data/renders/${comparisonId}-preview-${format}.mp4`;
+
+    await this.renderService.renderVideo({
+      compositionId: compId,
+      inputProps: { comparison: comparisonData },
+      outputPath,
+      scale: 0.4, // Fast preview scale
+      crf: 30,
+      onProgress: (pct) => this.queue.progress(job.id, pct),
+    });
+
+    // Record in renders table
+    this.db.prepare(`
+      INSERT INTO renders (id, comparison_id, format, stage, file_path, status, created_at)
+      VALUES (?, ?, ?, 'preview', ?, 'ok', ?)
+    `).run(ulid(), comparisonId, format, outputPath, new Date().toISOString());
+
+    this.db.prepare(`UPDATE comparisons SET status = 'PREVIEW_RENDERED', updated_at = ? WHERE id = ?`)
+      .run(new Date().toISOString(), comparisonId);
+
+    this.queue.complete(job.id, { outputPath });
+  }
+
+  private async handleRenderFinal(job: Job, payload: any): Promise<void> {
+    if (!this.renderService) {
+      this.queue.complete(job.id, { skipped: true });
+      return;
+    }
+
+    const comparisonId = job.comparison_id ?? payload.comparisonId;
+    const format = payload.format ?? 'long';
+    this.queue.log(job.id, 'info', `Rendering FINAL 1080p video (${format}) for comparison ${comparisonId}...`);
+
+    const cmp = this.db.prepare('SELECT final_json FROM comparisons WHERE id = ?').get(comparisonId) as any;
+    const comparisonData = JSON.parse(cmp.final_json);
+    const n = comparisonData.phones.length;
+    const compId = format === 'short' ? `ShortVideo${n}` : `LongVideo${n}`;
+    const outputPath = `/Volumes/Backup/03_VIBE_CODING/smartphone comparation/data/renders/${comparisonId}-final-${format}.mp4`;
+
+    await this.renderService.renderVideo({
+      compositionId: compId,
+      inputProps: { comparison: comparisonData },
+      outputPath,
+      scale: 1.0, // Full 1080p
+      crf: 18,
+      onProgress: (pct) => this.queue.progress(job.id, pct),
+    });
+
+    this.db.prepare(`
+      INSERT INTO renders (id, comparison_id, format, stage, file_path, status, created_at)
+      VALUES (?, ?, ?, 'final', ?, 'ok', ?)
+    `).run(ulid(), comparisonId, format, outputPath, new Date().toISOString());
+
+    this.queue.complete(job.id, { outputPath });
+
+    // Enqueue thumbnail render after final video is done
+    if (format === 'long') {
+      this.queue.enqueue('render_thumbnail', { comparisonId });
+    }
+  }
+
+  private async handleRenderThumbnail(job: Job, payload: any): Promise<void> {
+    if (!this.renderService) {
+      this.queue.complete(job.id, { skipped: true });
+      return;
+    }
+
+    const comparisonId = job.comparison_id ?? payload.comparisonId;
+    this.queue.log(job.id, 'info', `Rendering YouTube thumbnail for comparison ${comparisonId}...`);
+
+    const cmp = this.db.prepare('SELECT final_json FROM comparisons WHERE id = ?').get(comparisonId) as any;
+    const comparisonData = JSON.parse(cmp.final_json);
+    const n = comparisonData.phones.length;
+    const compId = `Thumbnail${n}`;
+    const outputPath = `/Volumes/Backup/03_VIBE_CODING/smartphone comparation/data/renders/${comparisonId}-thumb.png`;
+
+    await this.renderService.renderThumbnail({
+      compositionId: compId,
+      inputProps: { comparison: comparisonData },
+      outputPath,
+    });
+
+    this.db.prepare(`
+      INSERT INTO renders (id, comparison_id, format, stage, file_path, status, created_at)
+      VALUES (?, ?, 'thumbnail', 'final', ?, 'ok', ?)
+    `).run(ulid(), comparisonId, outputPath, new Date().toISOString());
+
+    this.db.prepare(`UPDATE comparisons SET status = 'FINAL_RENDERED', updated_at = ? WHERE id = ?`)
+      .run(new Date().toISOString(), comparisonId);
+
+    this.queue.complete(job.id, { thumbnailPath: outputPath });
+
+    // Next step: handoff to ytagent
+    this.queue.enqueue('handoff', { comparisonId });
   }
 
   private async handleHandoff(job: Job, payload: any): Promise<void> {

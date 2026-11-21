@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { loadEnv, loadAiConfig, openDb, JobQueue } from '@phone-studio/core';
 import { LlmRouter } from '@phone-studio/ai';
 import { HttpPublisher } from '@phone-studio/publisher';
+import { RemotionRenderService } from './render-service.js';
 import { PipelineOrchestrator } from './orchestrator.js';
 import { WorkerRunner } from './runner.js';
 
@@ -50,11 +51,17 @@ async function main(): Promise<void> {
       })
     : undefined;
 
+  const renderService = new RemotionRenderService(
+    join(ROOT_DIR, 'packages/video/src/index.ts'),
+    join(ROOT_DIR, 'data/renders')
+  );
+
   const orchestrator = new PipelineOrchestrator({
     db,
     queue,
     router,
     publisher,
+    renderService,
   });
 
   const runner = new WorkerRunner({
