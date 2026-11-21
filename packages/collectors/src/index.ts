@@ -9,3 +9,5 @@ export * from './fetcher/html-extractor.js';
 export * from './fetcher/polite-fetcher.js';
 export * from './pairs/pair-finder.js';
 export * from './specs/spec-collector.js';
+export * from './images/image-resolver.js';
+export * from './benchmarks/csv-importer.js';
