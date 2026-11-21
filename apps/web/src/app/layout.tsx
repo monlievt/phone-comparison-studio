@@ -28,6 +28,9 @@ export default function RootLayout({
                 <Link href="/" className="hover:text-slate-100 transition-colors">
                   Overview
                 </Link>
+                <Link href="/comparisons/new" className="hover:text-slate-100 transition-colors flex items-center gap-1 text-blue-400 font-semibold">
+                  <span>+ New Video</span>
+                </Link>
                 <Link href="/topics" className="hover:text-slate-100 transition-colors flex items-center gap-1.5">
                   <span>Topics</span>
                   <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded-full font-mono">
@@ -36,6 +39,9 @@ export default function RootLayout({
                 </Link>
                 <Link href="/jobs" className="hover:text-slate-100 transition-colors">
                   Jobs Queue
+                </Link>
+                <Link href="/settings" className="hover:text-slate-100 transition-colors">
+                  Settings
                 </Link>
               </nav>
             </div>
