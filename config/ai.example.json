@@ -1,0 +1,27 @@
+{
+  "providers": [
+    {
+      "id": "gemini-pro",
+      "kind": "gemini",
+      "model": "gemini-2.5-pro",
+      "supportsGrounding": true,
+      "note": "Primary — uses GEMINI_API_KEY from .env"
+    },
+    {
+      "id": "groq-free",
+      "kind": "openai-compat",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "model": "llama-3.3-70b-versatile",
+      "note": "Fallback 1 — uses GROQ_API_KEY from .env; 1000 req/day free"
+    },
+    {
+      "id": "gemini-flash",
+      "kind": "gemini",
+      "model": "gemini-2.5-flash",
+      "supportsGrounding": false,
+      "note": "Fallback 2 — uses GEMINI_API_KEY; ~1500 req/day free tier"
+    }
+  ],
+  "perVideoCallCap": 8,
+  "maxAttemptsPerProvider": 2
+}

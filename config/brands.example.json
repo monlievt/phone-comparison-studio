@@ -1,0 +1,15 @@
+{
+  "_note": "Per-brand image terms. allowed: true=use press kit, false=blocked, null=unknown (defaults to parametric phone). logoAllowed: official SVG logo from press kit only.",
+  "brands": [
+    {"brand": "Samsung", "termsUrl": "https://news.samsung.com/global/terms-and-conditions", "allowed": null, "allowsModification": false, "logoAllowed": false},
+    {"brand": "Apple", "termsUrl": "https://www.apple.com/legal/intellectual-property/guidelinesfor3rdparties.html", "allowed": false, "allowsModification": false, "logoAllowed": false},
+    {"brand": "Xiaomi", "termsUrl": "https://www.mi.com/global/about/terms", "allowed": null, "allowsModification": false, "logoAllowed": false},
+    {"brand": "OPPO", "termsUrl": "https://www.oppo.com/en/terms-of-use/", "allowed": null, "allowsModification": false, "logoAllowed": false},
+    {"brand": "OnePlus", "termsUrl": "https://www.oneplus.com/legal/terms-of-use", "allowed": null, "allowsModification": false, "logoAllowed": false},
+    {"brand": "Vivo", "termsUrl": "https://www.vivo.com/en/terms-of-use", "allowed": null, "allowsModification": false, "logoAllowed": false},
+    {"brand": "Realme", "termsUrl": "https://www.realme.com/en/terms", "allowed": null, "allowsModification": false, "logoAllowed": false},
+    {"brand": "Google", "termsUrl": "https://about.google/brand-resource-center/", "allowed": null, "allowsModification": false, "logoAllowed": false},
+    {"brand": "Nothing", "termsUrl": "https://nothing.tech/pages/terms-of-service", "allowed": null, "allowsModification": false, "logoAllowed": false},
+    {"brand": "Motorola", "termsUrl": "https://www.motorola.com/us/legal", "allowed": null, "allowsModification": false, "logoAllowed": false}
+  ]
+}

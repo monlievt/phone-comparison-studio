@@ -1,0 +1,6 @@
+{
+  "display_type": ["LCD (TN/VA)", "IPS LCD", "OLED", "AMOLED", "LTPO AMOLED"],
+  "video_recording": ["720p30", "1080p30", "1080p60", "4K30", "4K60", "8K24", "8K30"],
+  "ip_rating_dust": [0, 1, 2, 3, 4, 5, 6],
+  "ip_rating_water": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+}

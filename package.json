@@ -1,0 +1,26 @@
+{
+  "name": "phone-comparison-studio",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:all": "concurrently \"npm run dev:web\" \"npm run dev:worker\" --names web,worker --prefix-colors blue,green",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:worker": "npm run dev --workspace=apps/worker",
+    "db:migrate": "npm run migrate --workspace=apps/worker",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run --reporter=verbose",
+    "e2e": "vitest run --config vitest.e2e.config.ts",
+    "video:studio": "npm run dev --workspace=packages/video",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "@vitest/coverage-v8": "^2.1.0"
+  }
+}

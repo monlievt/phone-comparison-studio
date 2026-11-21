@@ -1,0 +1,32 @@
+{
+  "name": "@phone-studio/video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remotion compositions for data-driven phone comparison videos (Long 16:9 and Short 9:16)",
+  "scripts": {
+    "dev": "remotion studio",
+    "audio": "node scripts/make-placeholder-audio.mjs",
+    "typecheck": "tsc --noEmit",
+    "render:wide2": "remotion render CategoryWide2 out/wide2.mp4",
+    "render:wide3": "remotion render CategoryWide3 out/wide3.mp4",
+    "render:vertical2": "remotion render CategoryVertical2 out/vertical2.mp4",
+    "render:vertical3": "remotion render CategoryVertical3 out/vertical3.mp4",
+    "render:long2": "remotion render LongVideo2 out/long2.mp4",
+    "render:long3": "remotion render LongVideo3 out/long3.mp4",
+    "render:short2": "remotion render ShortVideo2 out/short2.mp4",
+    "render:short3": "remotion render ShortVideo3 out/short3.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.542",
+    "@remotion/fonts": "4.0.542",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.542"
+  },
+  "devDependencies": {
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/manrope": "^5.3.0",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.6.0"
+  }
+}

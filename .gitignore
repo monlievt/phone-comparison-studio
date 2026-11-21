@@ -1,0 +1,42 @@
+# Node
+node_modules/
+
+# Data (runtime — never commit)
+data/
+!data/.gitkeep
+
+# Renders and assets
+*.mp4
+*.mov
+*.webm
+out/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+.next/
+.remotion/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Config with real values (keep example files)
+config/ai.json
+config/ordinals.json
+config/soc-tiers.json
+config/brands.json
+!config/*.example.json
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
