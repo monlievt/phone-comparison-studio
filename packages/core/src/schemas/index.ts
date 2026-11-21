@@ -31,6 +31,7 @@ export const JobStateSchema = z.enum(['queued', 'running', 'done', 'failed', 'bl
 export type JobState = z.infer<typeof JobStateSchema>;
 
 export const JobTypeSchema = z.enum([
+  'track_candidates',
   'find_topics',
   'collect_specs',
   'collect_images',
@@ -42,6 +43,41 @@ export const JobTypeSchema = z.enum([
   'handoff',
 ]);
 export type JobType = z.infer<typeof JobTypeSchema>;
+
+// --- Phone Candidate (Auto Discovery) ---
+export const CandidateSourceSchema = z.enum([
+  'gsmarena_rss',
+  'nanoreview',
+  'gemini_search',
+  'manual',
+]);
+export type CandidateSource = z.infer<typeof CandidateSourceSchema>;
+
+export const CandidateStatusSchema = z.enum([
+  'announced',
+  'released',
+  'ready',
+  'dismissed',
+]);
+export type CandidateStatus = z.infer<typeof CandidateStatusSchema>;
+
+export const PhoneCandidateSchema = z.object({
+  id: z.string(),
+  brand: z.string(),
+  model: z.string(),
+  variant: z.string().nullable().optional(),
+  source: CandidateSourceSchema,
+  sourceUrl: z.string().url().nullable().optional(),
+  status: CandidateStatusSchema.default('announced'),
+  announcedDate: z.string().nullable().optional(),
+  releaseDate: z.string().nullable().optional(),
+  estimatedPriceUSD: z.number().nullable().optional(),
+  socName: z.string().nullable().optional(),
+  rawPayload: z.record(z.any()).nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type PhoneCandidate = z.infer<typeof PhoneCandidateSchema>;
 
 // --- Source kinds ---
 export const SourceKindSchema = z.enum(['official', 'grounded', 'manual', 'secondary']);
