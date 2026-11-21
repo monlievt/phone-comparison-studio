@@ -1,13 +1,21 @@
 import React from 'react';
-import {Img, spring, useCurrentFrame, useVideoConfig} from 'remotion';
+import {Img, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {rgba} from '../lib/color';
 import {useEmphasis} from '../lib/emphasis';
 import {Phone} from '../types';
-import {theme} from '../theme';
+import {ParametricPhone} from './ParametricPhone';
 
 export const PHONE_RATIO = 2.1; // height / width of the generic mockup
 
-// Phone with a licensed image when available, otherwise a generic device in the phone's accent color.
+// Resolves image src: if local relative path, wrap with staticFile()
+function resolveImageSrc(src: string): string {
+  if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:')) {
+    return src;
+  }
+  return staticFile(src.replace(/^\/+/, ''));
+}
+
+// Phone with a licensed image when available, otherwise a parametric device mockup.
 export const PhoneMock: React.FC<{
   phone: Phone;
   width: number;
@@ -22,7 +30,6 @@ export const PhoneMock: React.FC<{
   const emph = useEmphasis(revealAt, rank, phoneCount);
   const float = Math.sin((frame / fps) * ((Math.PI * 2) / 3.2)) * 6 * enter;
   const height = width * PHONE_RATIO;
-  const bezel = width * 0.04;
 
   return (
     <div
@@ -36,68 +43,18 @@ export const PhoneMock: React.FC<{
       }}
     >
       {phone.image ? (
-        <Img src={phone.image.src} style={{width: '100%', height: '100%', objectFit: 'contain'}} />
+        <Img src={resolveImageSrc(phone.image.src)} style={{width: '100%', height: '100%', objectFit: 'contain'}} />
       ) : (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            boxSizing: 'border-box',
-            padding: bezel,
-            borderRadius: width * 0.15,
-            background: '#101216',
-          }}
-        >
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              height: '100%',
-              overflow: 'hidden',
-              borderRadius: width * 0.115,
-              background: `linear-gradient(165deg, ${phone.accent} 0%, ${rgba(phone.accent, 0.6)} 55%, #101216 140%)`,
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                width: width * 1.1,
-                height: width * 1.1,
-                borderRadius: '50%',
-                right: -width * 0.35,
-                top: width * 0.5,
-                background: 'radial-gradient(circle, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 65%)',
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                top: '3.2%',
-                left: '50%',
-                width: width * 0.045,
-                height: width * 0.045,
-                marginLeft: -width * 0.0225,
-                borderRadius: '50%',
-                background: '#101216',
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                top: '13%',
-                width: '100%',
-                textAlign: 'center',
-                fontFamily: theme.fonts.display,
-                fontWeight: 700,
-                fontSize: width * 0.2,
-                color: 'rgba(255,255,255,0.92)',
-              }}
-            >
-              9:41
-            </div>
-          </div>
-        </div>
+        <ParametricPhone
+          width={width}
+          height={height}
+          accent={phone.accent}
+        />
       )}
+    </div>
+  );
+};
+
     </div>
   );
 };
