@@ -22,8 +22,12 @@ export default function SettingsPage() {
 
   const [geminiKey, setGeminiKey] = useState('');
   const [groqKey, setGroqKey] = useState('');
+  const [telegramBotToken, setTelegramBotToken] = useState('');
+  const [telegramChatId, setTelegramChatId] = useState('');
+  const [appBaseUrl, setAppBaseUrl] = useState('http://127.0.0.1:3000');
   const [hasGemini, setHasGemini] = useState(false);
   const [hasGroq, setHasGroq] = useState(false);
+  const [hasTelegram, setHasTelegram] = useState(false);
   const [ytagentUrl, setYtagentUrl] = useState('http://127.0.0.1:8000');
   const [ytagentChannel, setYtagentChannel] = useState('');
   const [showKeys, setShowKeys] = useState(false);
@@ -35,6 +39,7 @@ export default function SettingsPage() {
   const [geminiTest, setGeminiTest] = useState<TestResult>({ testing: false });
   const [groqTest, setGroqTest] = useState<TestResult>({ testing: false });
   const [ytagentTest, setYtagentTest] = useState<TestResult>({ testing: false });
+  const [telegramTest, setTelegramTest] = useState<TestResult>({ testing: false });
 
   const [pipelineMode, setPipelineMode] = useState<'autopilot' | 'manual'>('manual');
   const [autopilotEnabled, setAutopilotEnabled] = useState(false);
@@ -43,6 +48,8 @@ export default function SettingsPage() {
   const [minCategories, setMinCategories] = useState(8);
   const [minConfidence, setMinConfidence] = useState(0.8);
   const [holdHours, setHoldHours] = useState(24);
+  const [requireTelegramApproval, setRequireTelegramApproval] = useState(false);
+  const [telegramDigest, setTelegramDigest] = useState<'off' | 'daily' | 'weekly'>('weekly');
   const [maxConsecutiveFailures, setMaxConsecutiveFailures] = useState(2);
   const [defaultTemplate, setDefaultTemplate] = useState<'v1' | 'v2' | 'v3'>('v3');
   const [isPaused, setIsPaused] = useState(false);
@@ -60,8 +67,12 @@ export default function SettingsPage() {
         if (!data) return;
         setHasGemini(Boolean(data.hasGemini));
         setHasGroq(Boolean(data.hasGroq));
+        setHasTelegram(Boolean(data.hasTelegram));
         if (data.geminiApiKeyMasked) setGeminiKey(data.geminiApiKeyMasked);
         if (data.groqApiKeyMasked) setGroqKey(data.groqApiKeyMasked);
+        if (data.telegramBotTokenMasked) setTelegramBotToken(data.telegramBotTokenMasked);
+        if (data.telegramChatId) setTelegramChatId(data.telegramChatId);
+        if (data.appBaseUrl) setAppBaseUrl(data.appBaseUrl);
         if (data.ytagentBaseUrl) setYtagentUrl(data.ytagentBaseUrl);
         if (data.ytagentChannelName) setYtagentChannel(data.ytagentChannelName);
       })
@@ -80,6 +91,8 @@ export default function SettingsPage() {
           setMinCategories(ap.minCategories ?? 8);
           setMinConfidence(ap.minConfidence ?? 0.8);
           setHoldHours(ap.holdHours ?? 24);
+          setRequireTelegramApproval(Boolean(ap.requireTelegramApproval));
+          setTelegramDigest(ap.telegramDigest ?? 'weekly');
           setMaxConsecutiveFailures(ap.maxConsecutiveFailures ?? 2);
           setDefaultTemplate(ap.defaultTemplate ?? 'v3');
         }
@@ -107,10 +120,13 @@ export default function SettingsPage() {
       const payload: Record<string, string> = {
         ytagentBaseUrl: ytagentUrl,
         ytagentChannelName: ytagentChannel,
+        telegramChatId,
+        appBaseUrl,
       };
       // Only send a key when user replaced the masked value
       if (geminiKey && !geminiKey.includes('••••')) payload.geminiApiKey = geminiKey;
       if (groqKey && !groqKey.includes('••••')) payload.groqApiKey = groqKey;
+      if (telegramBotToken && !telegramBotToken.includes('••••')) payload.telegramBotToken = telegramBotToken;
 
       const res = await fetch('/api/settings/keys', {
         method: 'POST',
@@ -126,7 +142,8 @@ export default function SettingsPage() {
 
       if (payload.geminiApiKey) setHasGemini(true);
       if (payload.groqApiKey) setHasGroq(true);
-      showToast('API credentials saved to .env');
+      if ((payload.telegramBotToken || hasTelegram) && telegramChatId.trim()) setHasTelegram(true);
+      showToast('API credentials saved to .env (restart worker if Telegram token changed)');
     } catch (err: unknown) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save keys');
     } finally {
@@ -151,6 +168,8 @@ export default function SettingsPage() {
             minCategories,
             minConfidence,
             holdHours,
+            requireTelegramApproval,
+            telegramDigest,
             maxConsecutiveFailures,
             defaultTemplate,
           },
@@ -246,8 +265,15 @@ export default function SettingsPage() {
     });
   };
 
-  const handleTestConnection = async (target: 'gemini' | 'groq' | 'ytagent') => {
-    const setter = target === 'gemini' ? setGeminiTest : target === 'groq' ? setGroqTest : setYtagentTest;
+  const handleTestConnection = async (target: 'gemini' | 'groq' | 'ytagent' | 'telegram') => {
+    const setter =
+      target === 'gemini'
+        ? setGeminiTest
+        : target === 'groq'
+        ? setGroqTest
+        : target === 'telegram'
+        ? setTelegramTest
+        : setYtagentTest;
     setter({ testing: true });
     try {
       const payload: Record<string, string> = { provider: target, target };
@@ -256,6 +282,10 @@ export default function SettingsPage() {
       if (target === 'ytagent') {
         payload.baseUrl = ytagentUrl;
         payload.url = ytagentUrl;
+      }
+      if (target === 'telegram') {
+        if (telegramBotToken && !telegramBotToken.includes('••••')) payload.botToken = telegramBotToken;
+        if (telegramChatId.trim()) payload.chatId = telegramChatId.trim();
       }
 
       const res = await fetch('/api/settings/test', {
@@ -487,6 +517,84 @@ export default function SettingsPage() {
             )}
           </div>
 
+          <div className="bg-[#ffffff] rounded-[24px] p-6 sm:p-8 border border-[#d5dbd1] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-[#e8ebe6] pb-3">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-black text-[#0e0f0c]">
+                  <span>Telegram Bot Alerts &amp; Remote Review</span>
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#e8ebe6] text-[#0e0f0c] font-bold">
+                    {hasTelegram ? 'Configured' : 'Optional ($0)'}
+                  </span>
+                </div>
+                <div className="text-xs text-[#595c58] mt-0.5">
+                  Sends rendered video previews with OK / Fix / Reject buttons, failure alerts, and responds to /status, /pending, /run, /pause, /resume.
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={telegramTest.testing || (!telegramBotToken.trim() && !hasTelegram)}
+                onClick={() => handleTestConnection('telegram')}
+                className="px-5 min-h-[44px] rounded-full bg-[#e8ebe6] hover:bg-[#dbe0d8] text-xs font-bold text-[#0e0f0c] whitespace-nowrap self-start sm:self-auto"
+              >
+                {telegramTest.testing ? 'Sending Test...' : 'Test Telegram'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label htmlFor="tg-token" className="block text-xs font-bold text-[#454745]">
+                  TELEGRAM_BOT_TOKEN (from @BotFather)
+                </label>
+                <input
+                  id="tg-token"
+                  type={showKeys ? 'text' : 'password'}
+                  placeholder={hasTelegram ? 'Configured (enter a new token to replace)' : '123456789:AAH...'}
+                  value={telegramBotToken}
+                  onChange={(e) => setTelegramBotToken(e.target.value)}
+                  className="w-full px-4 min-h-[44px] rounded-[12px] bg-[#f8f9f7] border border-[#595c58]/60 text-xs font-semibold text-[#0e0f0c]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="tg-chat" className="block text-xs font-bold text-[#454745]">
+                  TELEGRAM_CHAT_ID (only this chat can control bot)
+                </label>
+                <input
+                  id="tg-chat"
+                  type="text"
+                  placeholder="e.g. 123456789"
+                  value={telegramChatId}
+                  onChange={(e) => setTelegramChatId(e.target.value)}
+                  className="w-full px-4 min-h-[44px] rounded-[12px] bg-[#f8f9f7] border border-[#595c58]/60 text-xs font-semibold text-[#0e0f0c]"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="app-base-url" className="block text-xs font-bold text-[#454745]">
+                APP_BASE_URL (used for clickable Gate A edit links sent to Telegram, e.g. Tailscale IP)
+              </label>
+              <input
+                id="app-base-url"
+                type="text"
+                placeholder="http://100.x.x.x:3000"
+                value={appBaseUrl}
+                onChange={(e) => setAppBaseUrl(e.target.value)}
+                className="w-full px-4 min-h-[44px] rounded-[12px] bg-[#f8f9f7] border border-[#595c58]/60 text-xs font-semibold text-[#0e0f0c]"
+              />
+            </div>
+
+            {telegramTest.message && (
+              <div
+                className={`p-3 rounded-[12px] text-xs font-medium ${
+                  telegramTest.success ? 'bg-[#e2f6d5] text-[#054d28]' : 'bg-[#320707] text-[#ffd11a]'
+                }`}
+              >
+                {telegramTest.message}
+              </div>
+            )}
+          </div>
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
             <label htmlFor="show-keys" className="flex items-center gap-2 min-h-[44px] text-xs font-bold text-[#454745]">
               <input
@@ -691,27 +799,58 @@ export default function SettingsPage() {
                   <option value="v1">Template V1</option>
                 </select>
               </div>
+
+              <div className="p-4 rounded-[16px] bg-[#f8f9f7] border border-[#e8ebe6] space-y-1.5">
+                <label htmlFor="ap-digest" className="block text-xs font-bold text-[#454745]">
+                  Telegram digest report
+                </label>
+                <select
+                  id="ap-digest"
+                  value={telegramDigest}
+                  onChange={(e) => setTelegramDigest(e.target.value as 'off' | 'daily' | 'weekly')}
+                  className="w-full px-3 min-h-[44px] rounded-[10px] bg-white border border-[#595c58]/60 text-xs font-bold text-[#0e0f0c]"
+                >
+                  <option value="weekly">Weekly (Sunday evening)</option>
+                  <option value="daily">Daily (evening)</option>
+                  <option value="off">Off (commands &amp; alerts only)</option>
+                </select>
+              </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-[#e8ebe6]">
-              <label htmlFor="ap-enabled" className="flex items-center gap-2 min-h-[44px] text-xs font-bold text-[#0e0f0c]">
-                <input
-                  id="ap-enabled"
-                  type="checkbox"
-                  checked={autopilotEnabled}
-                  onChange={(e) => setAutopilotEnabled(e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span>Enable hourly background scheduler</span>
-              </label>
+            <div className="flex flex-col gap-3 pt-4 border-t border-[#e8ebe6]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <label htmlFor="ap-enabled" className="flex items-center gap-2 min-h-[44px] text-xs font-bold text-[#0e0f0c]">
+                    <input
+                      id="ap-enabled"
+                      type="checkbox"
+                      checked={autopilotEnabled}
+                      onChange={(e) => setAutopilotEnabled(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span>Enable hourly background scheduler</span>
+                  </label>
 
-              <button
-                type="submit"
-                disabled={savingPolicy}
-                className="px-7 min-h-[44px] rounded-full bg-[#9fe870] hover:bg-[#cdffad] text-[#0e0f0c] font-bold text-xs"
-              >
-                {savingPolicy ? 'Saving Policy...' : 'Save Autopilot Policy'}
-              </button>
+                  <label htmlFor="ap-tg-strict" className="flex items-center gap-2 min-h-[44px] text-xs font-bold text-[#0e0f0c]">
+                    <input
+                      id="ap-tg-strict"
+                      type="checkbox"
+                      checked={requireTelegramApproval}
+                      onChange={(e) => setRequireTelegramApproval(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span>Require Telegram OK click before handoff (Strict Approval)</span>
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={savingPolicy}
+                  className="px-7 min-h-[44px] rounded-full bg-[#9fe870] hover:bg-[#cdffad] text-[#0e0f0c] font-bold text-xs self-start sm:self-center"
+                >
+                  {savingPolicy ? 'Saving Policy...' : 'Save Autopilot Policy'}
+                </button>
+              </div>
             </div>
           </div>
         </form>

@@ -28,6 +28,7 @@ export interface WorkerRunnerOptions {
   supportedJobTypes?: JobType[];
   maxGeneralConcurrency?: number;
   maxRenderConcurrency?: number;
+  onJobPermanentFailure?: (job: Job, errorMsg: string) => void;
 }
 
 export class WorkerRunner {
@@ -41,6 +42,7 @@ export class WorkerRunner {
   private activeRenderJobs = 0;
   private maxGeneralConcurrency: number;
   private maxRenderConcurrency: number;
+  private onJobPermanentFailure?: (job: Job, errorMsg: string) => void;
 
   constructor(opts: WorkerRunnerOptions) {
     this.queue = opts.queue;
@@ -48,6 +50,7 @@ export class WorkerRunner {
     this.pollIntervalMs = opts.pollIntervalMs ?? 2000;
     this.maxGeneralConcurrency = opts.maxGeneralConcurrency ?? 2;
     this.maxRenderConcurrency = opts.maxRenderConcurrency ?? 1; // Strict render lock per ARCHITECTURE.md §1
+    this.onJobPermanentFailure = opts.onJobPermanentFailure;
 
     if (opts.supportedJobTypes) {
       const renderSet = new Set<JobType>(RENDER_JOB_TYPES);
@@ -140,6 +143,9 @@ export class WorkerRunner {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error(`[worker] Job ${job.id} failed:`, errMsg);
       this.queue.fail(job.id, errMsg);
+      if (job.attempt + 1 >= job.max_attempts) {
+        this.onJobPermanentFailure?.(job, errMsg);
+      }
     } finally {
       clearInterval(heartbeatTimer);
       if (isRender) {

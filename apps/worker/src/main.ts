@@ -10,6 +10,7 @@ import { RemotionRenderService } from './render-service.js';
 import { PipelineOrchestrator } from './orchestrator.js';
 import { WorkerRunner } from './runner.js';
 import { AutopilotController } from './autopilot.js';
+import { TelegramBotService } from './telegram.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = join(__dirname, '../../..');
@@ -77,7 +78,26 @@ async function main(): Promise<void> {
     join(dataDir, 'renders')
   );
 
-  const autopilot = new AutopilotController(db, queue, dataDir, dailyLimits);
+  const telegram =
+    env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID
+      ? new TelegramBotService({
+          botToken: env.TELEGRAM_BOT_TOKEN,
+          chatId: env.TELEGRAM_CHAT_ID,
+          appBaseUrl: env.APP_BASE_URL || `http://${env.BIND_HOST === '0.0.0.0' ? '127.0.0.1' : env.BIND_HOST}:${env.PORT}`,
+          db,
+          queue,
+          dataDir,
+          dailyLimits,
+        })
+      : undefined;
+
+  if (telegram) {
+    telegram.startPolling();
+  } else {
+    console.log('[telegram] Disabled (set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env or /settings to enable)');
+  }
+
+  const autopilot = new AutopilotController(db, queue, dataDir, dailyLimits, telegram);
 
   const orchestrator = new PipelineOrchestrator({
     db,
@@ -86,6 +106,7 @@ async function main(): Promise<void> {
     publisher,
     renderService,
     autopilot,
+    telegram,
     dataDir,
     configDir,
     videoPublicDir: join(ROOT_DIR, 'packages/video/public'),
@@ -97,15 +118,21 @@ async function main(): Promise<void> {
     pollIntervalMs: 2000,
     maxGeneralConcurrency: 2,
     maxRenderConcurrency: 1, // Strict render lock
+    onJobPermanentFailure: (job, errMsg) => {
+      telegram?.notifyJobFailure(job, errMsg).catch(() => {});
+    },
   });
 
-  // 4. Start Autopilot hourly scheduler & daily cleanup timer
+  // 4. Start Autopilot hourly scheduler, Telegram digest check, & daily cleanup timer
   const runAutopilotTick = async () => {
     try {
       const res = await autopilot.runSchedulerTick();
       console.log(`[autopilot] Tick result: ${res.action}${res.reason ? ` (${res.reason})` : ''}`);
     } catch (err) {
       console.error('[autopilot] Scheduler tick error:', err);
+    }
+    if (telegram) {
+      await telegram.maybeSendScheduledDigest().catch(() => {});
     }
   };
 
@@ -122,6 +149,7 @@ async function main(): Promise<void> {
     clearTimeout(initialTickTimer);
     clearInterval(hourlyTimer);
     clearInterval(cleanupTimer);
+    telegram?.stopPolling();
     runner.stop();
     setTimeout(() => {
       db.close();

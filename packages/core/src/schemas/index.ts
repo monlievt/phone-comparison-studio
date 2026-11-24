@@ -62,6 +62,8 @@ export const AutopilotSettingsSchema = z.object({
   criticalCategories: z.array(z.string()).default(['price', 'battery', 'refresh_rate', 'ram', 'charging']),
   minConfidence: z.number().min(0.4).max(1.0).default(0.8),
   holdHours: z.number().min(0).max(168).default(24),
+  requireTelegramApproval: z.boolean().default(false),
+  telegramDigest: z.enum(['off', 'daily', 'weekly']).default('weekly'),
   maxConsecutiveFailures: z.number().int().min(1).max(10).default(2),
   dailyLlmReserve: z.number().min(0).max(0.5).default(0.2),
   defaultTemplate: z.enum(['v1', 'v2', 'v3']).default('v3'),

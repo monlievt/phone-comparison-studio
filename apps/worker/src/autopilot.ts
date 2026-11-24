@@ -20,6 +20,7 @@ import {
   getSettingValue,
 } from '@phone-studio/core';
 import { checkCopyRules, CopyAllSchema } from '@phone-studio/ai';
+import type { TelegramBotService } from './telegram.js';
 
 export interface AutopilotTickResult {
   action: string;
@@ -68,7 +69,8 @@ export class AutopilotController {
       'gemini-flash': 1500,
       'groq-free': 1000,
       'gemini-pro': 1500,
-    }
+    },
+    private telegram?: TelegramBotService
   ) { }
 
   isPaused(): { paused: boolean; reason: string | null } {
@@ -380,11 +382,31 @@ export class AutopilotController {
   }
 
   /**
-   * Schedules handoff respecting holdHours cancel window (AUTOPILOT.md §6).
+   * Schedules handoff respecting holdHours cancel window or strict Telegram approval (AUTOPILOT.md §6).
    */
-  scheduleHoldOrHandoff(comparisonId: string): { jobId: string; runAfter: string | null } {
+  scheduleHoldOrHandoff(comparisonId: string): { jobId: string | null; runAfter: string | null } {
     const settings = getStudioSettings(this.db);
     const holdHours = settings.autopilot.holdHours;
+    const strictApproval = Boolean(settings.autopilot.requireTelegramApproval && this.telegram);
+
+    if (strictApproval) {
+      this.db
+        .prepare(`UPDATE comparisons SET status = 'METADATA_READY', updated_at = ? WHERE id = ?`)
+        .run(new Date().toISOString(), comparisonId);
+
+      writeAuditLog(this.db, 'autopilot', 'awaiting_telegram_approval', comparisonId, {
+        strictApproval: true,
+      });
+
+      this.telegram?.notifyFinalReview(comparisonId, {
+        holdHours,
+        strictApproval: true,
+        runAfter: null,
+      }).catch(() => {});
+
+      return { jobId: null, runAfter: null };
+    }
+
     const runAfterDate = holdHours > 0 ? new Date(Date.now() + holdHours * 3600 * 1000) : undefined;
 
     const jobId = this.queue.enqueue('handoff', {
@@ -406,6 +428,12 @@ export class AutopilotController {
       jobId,
     });
 
+    this.telegram?.notifyFinalReview(comparisonId, {
+      holdHours,
+      strictApproval: false,
+      runAfter: runAfterDate?.toISOString() ?? null,
+    }).catch(() => {});
+
     return { jobId, runAfter: runAfterDate?.toISOString() ?? null };
   }
 
@@ -420,6 +448,7 @@ export class AutopilotController {
     }
 
     writeAuditLog(this.db, 'autopilot', 'data_judge_skipped', comparisonId, { reasons });
+    this.telegram?.notifyAutoJudgeSkip(comparisonId, 'data_judge', reasons).catch(() => {});
     this.incrementFailureStreak(`Data Judge skipped ${comparisonId}: ${reasons.join('; ')}`);
   }
 
@@ -430,6 +459,7 @@ export class AutopilotController {
       .run(now, comparisonId);
 
     writeAuditLog(this.db, 'autopilot', 'video_judge_failed', comparisonId, { reasons });
+    this.telegram?.notifyAutoJudgeSkip(comparisonId, 'video_judge', reasons).catch(() => {});
     this.incrementFailureStreak(`Video Judge failed QA on ${comparisonId}: ${reasons.join('; ')}`);
   }
 
@@ -452,6 +482,7 @@ export class AutopilotController {
     });
     writeAuditLog(this.db, 'autopilot', 'safety_brake_triggered', 'autopilot', { reason });
     console.error(`[autopilot] SAFETY BRAKE TRIGGERED: ${reason}`);
+    this.telegram?.notifySafetyBrake(reason).catch(() => {});
   }
 
   private hasLlmQuotaAboveReserve(reserveFraction: number): boolean {

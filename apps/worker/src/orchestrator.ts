@@ -50,6 +50,7 @@ import {
 import { Publisher, PublishRequest } from '@phone-studio/publisher';
 import { RemotionRenderService } from './render-service.js';
 import { AutopilotController } from './autopilot.js';
+import type { TelegramBotService } from './telegram.js';
 
 const MOTION_PRESETS = ['gradientDrift', 'blobs', 'gridBreath', 'rotatingShapes'] as const;
 
@@ -100,6 +101,7 @@ export interface OrchestratorOptions {
   tracker?: CandidateTrackerService;
   renderService?: RemotionRenderService;
   autopilot?: AutopilotController;
+  telegram?: TelegramBotService;
   dataDir?: string;
   configDir?: string;
   videoPublicDir?: string;
@@ -270,6 +272,7 @@ export class PipelineOrchestrator {
   private tracker: CandidateTrackerService;
   private renderService?: RemotionRenderService;
   private autopilot?: AutopilotController;
+  private telegram?: TelegramBotService;
   private dataDir: string;
   private configDir: string;
   private videoPublicDir: string;
@@ -284,6 +287,7 @@ export class PipelineOrchestrator {
     this.tracker = opts.tracker ?? new CandidateTrackerService(this.db);
     this.renderService = opts.renderService;
     this.autopilot = opts.autopilot;
+    this.telegram = opts.telegram;
     this.dataDir = opts.dataDir ?? join(process.cwd(), 'data');
     this.configDir = opts.configDir ?? join(process.cwd(), 'config');
     this.videoPublicDir = opts.videoPublicDir ?? join(process.cwd(), 'packages/video/public');
@@ -1299,7 +1303,9 @@ export class PipelineOrchestrator {
 
   private async handleHandoff(job: Job, payload: Record<string, unknown>): Promise<void> {
     if (!this.publisher) {
-      this.queue.block(job.id, 'Publisher is not configured (set PUBLISH_MODE / YTAGENT_BASE_URL in .env)');
+      const msg = 'Publisher is not configured (set PUBLISH_MODE / YTAGENT_BASE_URL or YTAGENT_WATCH_DIR in .env)';
+      this.queue.block(job.id, msg);
+      this.telegram?.notifyJobFailure(job, msg).catch(() => {});
       return;
     }
 
@@ -1382,6 +1388,7 @@ export class PipelineOrchestrator {
 
     writeAuditLog(this.db, 'worker', 'handoff_complete', comparisonId, { results });
     this.queue.complete(job.id, { submitted: results });
+    this.telegram?.notifyHandoffSuccess(comparisonId, results).catch(() => {});
   }
 
   private async handleCleanup(job: Job): Promise<void> {

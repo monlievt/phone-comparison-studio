@@ -34,6 +34,10 @@ const EnvSchema = z.object({
   YTAGENT_BASE_URL: z.string().url().optional(),
   YTAGENT_CHANNEL_NAME: z.string().optional(),
   YTAGENT_WATCH_DIR: z.string().optional(),
+
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_CHAT_ID: z.string().optional(),
+  APP_BASE_URL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

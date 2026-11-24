@@ -17,10 +17,14 @@ export async function GET() {
   return NextResponse.json({
     geminiApiKeyMasked: maskSecret(env.GEMINI_API_KEY),
     groqApiKeyMasked: maskSecret(env.GROQ_API_KEY),
+    telegramBotTokenMasked: maskSecret(env.TELEGRAM_BOT_TOKEN),
+    telegramChatId: env.TELEGRAM_CHAT_ID || '',
+    appBaseUrl: env.APP_BASE_URL || 'http://127.0.0.1:3000',
     ytagentBaseUrl: env.YTAGENT_BASE_URL || 'http://127.0.0.1:8000',
     ytagentChannelName: env.YTAGENT_CHANNEL_NAME || '',
     hasGemini: Boolean(env.GEMINI_API_KEY),
     hasGroq: Boolean(env.GROQ_API_KEY),
+    hasTelegram: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID),
   });
 }
 
@@ -29,6 +33,9 @@ export async function POST(req: Request) {
     const body = (await req.json()) as {
       geminiApiKey?: string;
       groqApiKey?: string;
+      telegramBotToken?: string;
+      telegramChatId?: string;
+      appBaseUrl?: string;
       ytagentBaseUrl?: string;
       ytagentChannelName?: string;
     };
@@ -39,6 +46,15 @@ export async function POST(req: Request) {
     }
     if (typeof body.groqApiKey === 'string' && !body.groqApiKey.includes('••••')) {
       updates.GROQ_API_KEY = body.groqApiKey.trim();
+    }
+    if (typeof body.telegramBotToken === 'string' && !body.telegramBotToken.includes('••••')) {
+      updates.TELEGRAM_BOT_TOKEN = body.telegramBotToken.trim();
+    }
+    if (typeof body.telegramChatId === 'string') {
+      updates.TELEGRAM_CHAT_ID = body.telegramChatId.trim();
+    }
+    if (typeof body.appBaseUrl === 'string') {
+      updates.APP_BASE_URL = body.appBaseUrl.trim();
     }
     if (typeof body.ytagentBaseUrl === 'string') {
       updates.YTAGENT_BASE_URL = body.ytagentBaseUrl.trim();
