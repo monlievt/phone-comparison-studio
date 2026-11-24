@@ -2,7 +2,7 @@
 // Resolves phone images with strict license verification.
 // Specification: docs/MODULES.md §4 and docs/COMPLIANCE.md
 
-import Database from 'better-sqlite3';
+import { Database } from '@phone-studio/core';
 import { ulid } from 'ulid';
 import { createHash } from 'crypto';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';

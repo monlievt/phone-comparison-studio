@@ -22,7 +22,7 @@ export const ShortHook: React.FC<{comparison: Comparison}> = ({comparison}) => {
 
   return (
     <AbsoluteFill>
-      <Background phones={phones} />
+      <Background accents={phones.map((p) => p.accent)} layout="columns" />
 
       {/* Top Hook Banner */}
       <div
@@ -79,7 +79,7 @@ export const ShortHook: React.FC<{comparison: Comparison}> = ({comparison}) => {
 
       {/* Center VS Badge */}
       <div style={{position: 'absolute', left: 540 - 55, bottom: 680}}>
-        <VsBadge enterAt={15} />
+        <VsBadge x={55} y={55} size={110} delay={15} />
       </div>
     </AbsoluteFill>
   );

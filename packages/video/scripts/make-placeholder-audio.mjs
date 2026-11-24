@@ -58,22 +58,61 @@ save(
   gen(0.9, (t) => (Math.sin(TAU * 988 * t) + 0.5 * Math.sin(TAU * 1976 * t) + 0.25 * Math.sin(TAU * 2637 * t)) * Math.exp(-t * 5) * 0.35),
 );
 
-// 16 s loop: four soft chords, each fades in and out so the loop point is clean.
-const chords = [
-  [220, 261.63, 329.63],
-  [174.61, 220, 261.63],
-  [261.63, 329.63, 392],
-  [196, 246.94, 293.66],
+// 15.5 s loop at 124 BPM: Punchy modern tech beat (kick, hi-hat, 808 sidechain bass, plucked arpeggio)
+const BPM = 124;
+const BEAT_DUR = 60 / BPM;
+const LOOP_BEATS = 32;
+const DURATION = LOOP_BEATS * BEAT_DUR;
+const rootFreqs = [110, 87.31, 130.81, 98.00];
+const chordNotes = [
+  [220, 261.63, 329.63, 440],
+  [174.61, 220, 261.63, 349.23],
+  [261.63, 329.63, 392, 523.25],
+  [196, 246.94, 293.66, 392],
 ];
+
 save(
   'public/music/placeholder.wav',
-  gen(16, (t) => {
-    const ci = Math.min(3, Math.floor(t / 4));
-    const local = t - ci * 4;
-    const env = Math.min(1, local / 0.6, (4 - local) / 0.6);
-    const trem = 0.85 + 0.15 * Math.sin(TAU * 0.25 * t);
-    const body = chords[ci].reduce((s, f) => s + Math.sin(TAU * f * t) + 0.5 * Math.sin(TAU * f * 1.004 * t), 0);
-    const bass = Math.sin(TAU * (chords[ci][0] / 2) * t);
-    return (body * 0.07 + bass * 0.12) * env * trem;
+  gen(DURATION, (t) => {
+    const beat = t / BEAT_DUR;
+    const progIdx = Math.min(3, Math.floor(beat / 8));
+    let sample = 0;
+
+    // 1. Kick Drum
+    const beatFract = beat % 1;
+    const kickTime = beatFract * BEAT_DUR;
+    if (kickTime < 0.22) {
+      const kickFreq = 48 + 120 * Math.exp(-kickTime * 28);
+      const kickEnv = Math.exp(-kickTime * 18);
+      sample += 0.38 * Math.sin(TAU * kickFreq * kickTime) * kickEnv;
+    }
+
+    // 2. Hi-Hat
+    const sixteenth = (beat * 4) % 1;
+    const hatTime = sixteenth * (BEAT_DUR / 4);
+    if (hatTime < 0.05) {
+      const isOffbeat = Math.floor(beat * 2) % 2 === 1;
+      const hatVol = isOffbeat ? 0.09 : 0.045;
+      const noise = Math.random() * 2 - 1;
+      sample += noise * Math.exp(-hatTime * 95) * hatVol;
+    }
+
+    // 3. Synth Bass
+    const bassFreq = rootFreqs[progIdx] / 2;
+    const sidechain = Math.min(1, beatFract / 0.18);
+    const bassEnv = (0.7 + 0.3 * Math.sin(TAU * 2 * beat)) * sidechain;
+    const bassWave = Math.sin(TAU * bassFreq * t) + 0.35 * Math.sin(TAU * bassFreq * 2 * t);
+    sample += 0.22 * bassWave * bassEnv;
+
+    // 4. Plucked Synth Arpeggio
+    const arpStep = Math.floor(beat * 4) % 4;
+    const arpFreq = chordNotes[progIdx][arpStep];
+    const arpTime = hatTime;
+    const arpEnv = Math.exp(-arpTime * 14);
+    const arpWave = Math.sin(TAU * arpFreq * t) + 0.25 * Math.sin(TAU * arpFreq * 2 * t);
+    sample += 0.07 * arpWave * arpEnv;
+
+    const loopFade = Math.min(1, t / 0.05, (DURATION - t) / 0.05);
+    return sample * loopFade;
   }),
 );

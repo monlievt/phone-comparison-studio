@@ -10,7 +10,7 @@
     "./migrations": "./migrations"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json",
+    "build": "tsc --project tsconfig.json && mkdir -p dist && cp -R src/migrations dist/",
     "typecheck": "tsc --noEmit",
     "dev": "tsc --watch --noEmit"
   },

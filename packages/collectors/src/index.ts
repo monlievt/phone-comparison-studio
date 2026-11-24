@@ -3,6 +3,7 @@
 
 export * from './tracker/rss-parser.js';
 export * from './tracker/gsmarena.js';
+export * from './tracker/feeds.js';
 export * from './tracker/nanoreview.js';
 export * from './tracker/tracker-service.js';
 export * from './fetcher/html-extractor.js';

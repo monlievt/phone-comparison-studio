@@ -3,3 +3,4 @@
 
 export * from './types.js';
 export * from './http-publisher.js';
+export * from './folder-drop-publisher.js';

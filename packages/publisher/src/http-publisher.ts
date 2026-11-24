@@ -51,25 +51,29 @@ export class HttpPublisher implements Publisher {
     const videoData = (await detectRes.json()) as { id: number };
     const videoId = videoData.id;
 
-    // 2. Pre-set custom metadata (title, description, tags, category=28 Science & Tech)
+    // 2. Pre-set custom metadata (title, description, tags, category=28 Science & Tech, visibility, schedule, thumbnail)
     const metaUrl = `${this.baseUrl}/api/v1/videos/${videoId}/metadata`;
-    const metaPayload = {
+    const metaPayload: Record<string, unknown> = {
       title: req.metadata.title,
       description: req.metadata.description,
       tags: req.metadata.tags,
       category_id: req.metadata.categoryId ?? '28',
       ai_generated: req.metadata.containsSyntheticMedia ?? true,
       made_for_kids: req.metadata.madeForKids ?? false,
+      visibility: req.visibility ?? 'private',
+      ...(req.publishAt ? { publish_at: req.publishAt } : {}),
+      ...(req.thumbnailPath && existsSync(req.thumbnailPath) ? { thumbnail_path: req.thumbnailPath } : {}),
     };
 
-    try {
-      await fetch(metaUrl, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(metaPayload),
-      });
-    } catch (err) {
-      console.warn(`[publisher] Failed to patch metadata for video ${videoId}:`, err);
+    const metaRes = await fetch(metaUrl, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(metaPayload),
+    });
+
+    if (!metaRes.ok) {
+      const errText = await metaRes.text().catch(() => '');
+      throw new Error(`ytagent metadata patch failed for video ${videoId} (HTTP ${metaRes.status}): ${errText}`);
     }
 
     return {
@@ -86,9 +90,13 @@ export class HttpPublisher implements Publisher {
       throw new Error(`ytagent status check failed for video ${ref} (HTTP ${res.status})`);
     }
 
-    const data = (await res.json()) as any;
+    const data = (await res.json()) as {
+      status?: string;
+      youtube_video_id?: string;
+      last_error?: string;
+    };
     return {
-      status: data.status,
+      status: data.status ?? 'unknown',
       youtubeId: data.youtube_video_id,
       error: data.last_error,
     };

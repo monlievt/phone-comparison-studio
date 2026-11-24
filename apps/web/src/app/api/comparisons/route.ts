@@ -2,44 +2,85 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { ulid } from 'ulid';
-import { JobQueue } from '@phone-studio/core';
+import { JobQueue, getStudioSettings, writeAuditLog } from '@phone-studio/core';
+import { z } from 'zod';
 
-export async function GET() {
+const CreateComparisonSchema = z.object({
+  phones: z
+    .array(
+      z.object({
+        brand: z.string().min(1),
+        model: z.string().min(1),
+        variant: z.string().optional(),
+        specUrl: z.string().url().optional(),
+      })
+    )
+    .min(2)
+    .max(3),
+  formats: z.array(z.enum(['long', 'short'])).min(1).default(['long', 'short']),
+  title: z.string().optional(),
+  themePreset: z.enum(['v1', 'v2', 'v3']).optional(),
+  topicId: z.string().optional(),
+});
+
+export async function GET(req: Request) {
   const db = getDb();
-  const comparisons = db
-    .prepare('SELECT id, title, status, created_at, updated_at FROM comparisons ORDER BY created_at DESC LIMIT 50')
-    .all();
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get('status');
+
+  const comparisons = status
+    ? db
+      .prepare('SELECT id, title, status, theme_version, created_at, updated_at FROM comparisons WHERE status = ? ORDER BY created_at DESC LIMIT 50')
+      .all(status)
+    : db
+      .prepare('SELECT id, title, status, theme_version, created_at, updated_at FROM comparisons ORDER BY created_at DESC LIMIT 50')
+      .all();
 
   return NextResponse.json({ comparisons });
 }
 
 export async function POST(req: Request) {
   const db = getDb();
-  const body = await req.json();
+  const raw = await req.json();
+  const parsed = CreateComparisonSchema.safeParse(raw);
 
-  const { phones, formats = ['long', 'short'], title } = body;
-
-  if (!phones || !Array.isArray(phones) || phones.length < 2) {
-    return NextResponse.json({ error: 'Must provide at least 2 phones' }, { status: 400 });
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        error: {
+          code: 'INVALID_REQUEST',
+          message: 'Must provide 2 to 3 valid phones and at least one format',
+          details: parsed.error.issues,
+        },
+      },
+      { status: 400 }
+    );
   }
+
+  const { phones, formats, title, topicId } = parsed.data;
+  const settings = getStudioSettings(db);
+  const themeVersion = parsed.data.themePreset ?? settings.autopilot.defaultTemplate ?? 'v3';
 
   const comparisonId = ulid();
   const now = new Date().toISOString();
-  const autoTitle = title || phones.map((p: any) => `${p.brand} ${p.model}`).join(' vs ');
+  const autoTitle = title || phones.map((p) => `${p.brand} ${p.model}`).join(' vs ');
 
   db.prepare(`
-    INSERT INTO comparisons (id, title, phone_ids_json, formats_json, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, 'CREATED', ?, ?)
+    INSERT INTO comparisons (id, title, phone_ids_json, formats_json, theme_version, status, topic_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, 'CREATED', ?, ?, ?)
   `).run(
     comparisonId,
     autoTitle,
     JSON.stringify(phones),
     JSON.stringify(formats),
+    themeVersion,
+    topicId ?? null,
     now,
     now
   );
 
-  // Enqueue collect_specs job immediately
+  writeAuditLog(db, 'owner', 'create_comparison', comparisonId, { phones, formats, themeVersion });
+
   const queue = new JobQueue(db);
   const jobId = queue.enqueue('collect_specs', { comparisonId });
 

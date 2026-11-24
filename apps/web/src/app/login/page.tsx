@@ -1,4 +1,3 @@
-// apps/web/src/app/login/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -23,51 +22,61 @@ export default function LoginPage() {
       });
 
       if (!res.ok) {
-        throw new Error('Incorrect password');
+        const data = await res.json().catch(() => ({}));
+        const msg = typeof data.error === 'string' ? data.error : data.error?.message;
+        throw new Error(msg || 'Incorrect operator password');
       }
 
-      router.push('/');
+      const params = new URLSearchParams(window.location.search);
+      const nextPath = params.get('next');
+      router.push(nextPath && nextPath.startsWith('/') ? nextPath : '/');
       router.refresh();
-    } catch (err: any) {
-      setError(err?.message ?? 'Login failed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center">
-      <div className="w-full max-w-sm p-8 rounded-2xl bg-[#12151c] border border-[#1f2430] space-y-6">
-        <div className="text-center">
-          <div className="text-3xl mb-2">📱</div>
-          <h1 className="text-xl font-bold text-white">Phone Studio Login</h1>
-          <p className="text-xs text-slate-400 mt-1">Enter operator password configured in .env</p>
+    <div className="min-h-[65vh] flex items-center justify-center">
+      <div className="w-full max-w-sm p-6 sm:p-8 rounded-[24px] bg-[#ffffff] border border-[#d5dbd1] space-y-6">
+        <div className="space-y-1 border-b border-[#e8ebe6] pb-4">
+          <h1 className="text-2xl font-black text-[#0e0f0c] tracking-tight">Operator Login</h1>
+          <p className="text-xs text-[#595c58]">
+            Enter the password configured in APP_PASSWORD inside your local .env file.
+          </p>
         </div>
 
         {error && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs text-center">
+          <div role="alert" className="p-3.5 rounded-[12px] bg-[#320707] text-[#ffd11a] text-xs font-semibold">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+          <div className="space-y-1.5">
+            <label htmlFor="studio-password" className="block text-xs font-bold text-[#454745]">
+              Studio password
+            </label>
             <input
+              id="studio-password"
               type="password"
-              placeholder="Operator Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#181d26] border border-[#1f2430] text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              placeholder="Enter password"
+              autoComplete="current-password"
               required
+              className="w-full px-4 min-h-[44px] rounded-[12px] bg-[#f8f9f7] border border-[#595c58] text-sm font-semibold text-[#0e0f0c]"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold text-xs text-white transition-colors disabled:opacity-50"
+            className="w-full min-h-[44px] rounded-full bg-[#9fe870] hover:bg-[#cdffad] text-[#0e0f0c] font-bold text-sm"
           >
-            {loading ? 'Authenticating...' : 'Sign In to Studio'}
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
       </div>

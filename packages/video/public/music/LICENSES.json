@@ -1,0 +1,49 @@
+{
+  "tracks": [
+    {
+      "file": "music/placeholder.wav",
+      "license": "Own-made (Procedural synthesis via scripts/make-placeholder-audio.mjs)",
+      "source": "Phone Comparison Studio local generator",
+      "url": "local://packages/video/scripts/make-placeholder-audio.mjs",
+      "accessedAt": "2026-11-22",
+      "commercialAllowed": true
+    }
+  ],
+  "sfx": [
+    {
+      "file": "sfx/whoosh.wav",
+      "license": "Own-made (Procedural synthesis via scripts/make-placeholder-audio.mjs)",
+      "source": "Phone Comparison Studio local generator",
+      "url": "local://packages/video/scripts/make-placeholder-audio.mjs",
+      "accessedAt": "2026-11-22"
+    },
+    {
+      "file": "sfx/swoosh.wav",
+      "license": "Own-made (Procedural synthesis via scripts/make-placeholder-audio.mjs)",
+      "source": "Phone Comparison Studio local generator",
+      "url": "local://packages/video/scripts/make-placeholder-audio.mjs",
+      "accessedAt": "2026-11-22"
+    },
+    {
+      "file": "sfx/pop.wav",
+      "license": "Own-made (Procedural synthesis via scripts/make-placeholder-audio.mjs)",
+      "source": "Phone Comparison Studio local generator",
+      "url": "local://packages/video/scripts/make-placeholder-audio.mjs",
+      "accessedAt": "2026-11-22"
+    },
+    {
+      "file": "sfx/tick.wav",
+      "license": "Own-made (Procedural synthesis via scripts/make-placeholder-audio.mjs)",
+      "source": "Phone Comparison Studio local generator",
+      "url": "local://packages/video/scripts/make-placeholder-audio.mjs",
+      "accessedAt": "2026-11-22"
+    },
+    {
+      "file": "sfx/ding.wav",
+      "license": "Own-made (Procedural synthesis via scripts/make-placeholder-audio.mjs)",
+      "source": "Phone Comparison Studio local generator",
+      "url": "local://packages/video/scripts/make-placeholder-audio.mjs",
+      "accessedAt": "2026-11-22"
+    }
+  ]
+}

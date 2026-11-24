@@ -40,3 +40,13 @@ config/brands.json
 *.db
 *.db-shm
 *.db-wal
+
+# TypeScript incremental build caches & archive backups
+*.tsbuildinfo
+*.zip
+comparison-video/
+comparison-video */
+packages/video/test-thumb.png
+packages/video/public/phones/
+apps/web/public/phones/
+apps/web/next-env.d.ts

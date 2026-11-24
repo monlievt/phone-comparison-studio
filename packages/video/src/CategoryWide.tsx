@@ -13,7 +13,7 @@ import {badgeAt, T} from './lib/timing';
 import {SegmentProps} from './types';
 import {theme} from './theme';
 
-const BAR = 120;
+const BAR = 150;
 
 // 16:9 segment: title on top, one column per phone (value card above, phone rising from the name bar).
 export const CategoryWide: React.FC<SegmentProps> = ({comparison, categoryIndex}) => {

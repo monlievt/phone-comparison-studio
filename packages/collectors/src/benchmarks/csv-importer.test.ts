@@ -1,6 +1,6 @@
 // packages/collectors/src/benchmarks/csv-importer.test.ts
 import { describe, it, expect, beforeEach } from 'vitest';
-import Database from 'better-sqlite3';
+import { Database } from '@phone-studio/core';
 import { parseBenchmarkCsv, importBenchmarkCsv } from './csv-importer.js';
 
 describe('parseBenchmarkCsv', () => {
@@ -23,6 +23,7 @@ describe('importBenchmarkCsv', () => {
 
   beforeEach(() => {
     db = new Database(':memory:');
+    db.pragma('foreign_keys = ON');
     db.exec(`
       CREATE TABLE IF NOT EXISTS phones (
         id TEXT PRIMARY KEY,
@@ -43,8 +44,8 @@ describe('importBenchmarkCsv', () => {
 
       CREATE TABLE IF NOT EXISTS benchmark_scores (
         id TEXT PRIMARY KEY,
-        snapshot_id TEXT NOT NULL,
-        phone_id TEXT NOT NULL,
+        snapshot_id TEXT NOT NULL REFERENCES benchmark_snapshots(id),
+        phone_id TEXT NOT NULL REFERENCES phones(id),
         variant_used TEXT,
         main REAL NOT NULL,
         parts_json TEXT NOT NULL,
@@ -56,7 +57,7 @@ describe('importBenchmarkCsv', () => {
     db.prepare("INSERT INTO phones (id, brand, model) VALUES ('p1', 'Samsung', 'Galaxy S25')").run();
   });
 
-  it('imports CSV and matches known phone', () => {
+  it('imports CSV and matches known phone without FK violation on unknown devices', () => {
     const csv = `
       device,main,cpu,gpu
       Samsung Galaxy S25,2150000,500000,850000
@@ -66,11 +67,15 @@ describe('importBenchmarkCsv', () => {
     const result = importBenchmarkCsv(db, 'AnTuTu', 'v10', '2026-10', csv);
     expect(result.rowCount).toBe(2);
     expect(result.matchedCount).toBe(1);
+    expect(result.unmatchedDevices).toEqual(['Unknown Phone X']);
 
-    const snapshot = db.prepare('SELECT source, version FROM benchmark_snapshots WHERE id = ?').get(result.snapshotId) as any;
+    const snapshot = db.prepare('SELECT source, version FROM benchmark_snapshots WHERE id = ?').get(result.snapshotId) as {
+      source: string;
+      version: string;
+    };
     expect(snapshot.source).toBe('AnTuTu');
 
     const scores = db.prepare('SELECT main FROM benchmark_scores WHERE snapshot_id = ?').all(result.snapshotId);
-    expect(scores).toHaveLength(2);
+    expect(scores).toHaveLength(1);
   });
 });

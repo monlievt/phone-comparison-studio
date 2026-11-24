@@ -18,7 +18,7 @@ Browser ──> apps/web (Next.js, port 3000)
 |---|---|---|
 | Language | TypeScript | one language with Remotion |
 | Web | Next.js App Router | dashboard + route handlers |
-| DB | SQLite via `better-sqlite3`, SQL migrations in `packages/core/migrations` | zero setup |
+| DB | SQLite via Node built-in `node:sqlite` (`DatabaseSync`, Node ≥ 22), SQL migrations in `packages/core/src/migrations` | zero native build setup |
 | Queue | `jobs` table + polling worker (lease + heartbeat) | no Redis needed |
 | Validation | Zod | shared schemas |
 | Render | `@remotion/bundler` + `@remotion/renderer` | already built video package |
@@ -41,7 +41,7 @@ Known at time of writing (verify before relying):
 - `TODO-KONFIRMASI`: what "Gemini 4 Argon" in the owner's subscription refers to and whether it exposes an API.
 
 Rules:
-- `packages/ai` exposes `callJson({task, schema, prompt})`. Provider order and model names come from `config/ai.json`, e.g. `["gemini-free","openrouter-free","local"]`. On 429/5xx/timeout: next provider. Max 2 attempts per provider. Cap per video: 8 calls (config).
+- `packages/ai` exposes `callJson({task, schema, prompt})`. Provider order and model names come from `config/ai.json`, e.g. `["gemini-flash","groq-free","gemini-pro"]`. On 429/5xx/timeout: next provider. Max 2 attempts per provider. Cap per video: 8 calls (config).
 - Persistent counter table `llm_usage(provider, day, count)`; stop before the limit and surface "LLM quota reached" in the dashboard instead of failing silently.
 - Cache: `spec_cache` per phone (key = brand+model+variant), TTL 30 days; benchmark snapshots monthly. Never call an LLM for data already cached.
 - Prefer **non-LLM** work whenever possible: HTML→text extraction, regex/number parsing, deterministic verdict, template-based copy fallback (see `PROMPTS.md` §6) when quota is out.

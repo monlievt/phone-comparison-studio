@@ -1,6 +1,6 @@
 // packages/core/src/db/queue.test.ts
 import { describe, it, expect, beforeEach } from 'vitest';
-import Database from 'better-sqlite3';
+import { Database } from './database.js';
 import { migrate } from './migrate.js';
 import { JobQueue } from './queue.js';
 
@@ -44,8 +44,8 @@ describe('JobQueue', () => {
   });
 
   it('complete marks job done', () => {
-    q.enqueue('build_data');
-    const job = q.claim(['build_data'])!;
+    q.enqueue('collect_specs');
+    const job = q.claim(['collect_specs'])!;
     q.complete(job.id, { ok: true });
     const row = db.prepare('SELECT state, progress, result_json FROM jobs WHERE id=?').get(job.id) as {
       state: string;
@@ -115,8 +115,8 @@ describe('JobQueue', () => {
   });
 
   it('getLogs returns job log entries', () => {
-    q.enqueue('cleanup');
-    const job = q.claim(['cleanup'])!;
+    q.enqueue('handoff');
+    const job = q.claim(['handoff'])!;
     q.log(job.id, 'info', 'started cleanup');
     const logs = q.getLogs(job.id);
     expect(logs.length).toBeGreaterThanOrEqual(1);

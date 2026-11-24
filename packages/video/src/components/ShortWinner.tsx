@@ -1,24 +1,24 @@
 import React from 'react';
-import {AbsoluteFill, spring, useCurrentFrame, useVideoConfig} from 'remotion';
-import {Background} from './Background';
-import {PhoneMock} from './PhoneMock';
-import {RankBadge} from './RankBadge';
-import {theme} from '../theme';
-import {Comparison} from '../types';
+import { AbsoluteFill, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { Background } from './Background';
+import { PhoneMock } from './PhoneMock';
+import { RankBadge } from './RankBadge';
+import { theme } from '../theme';
+import { Comparison } from '../types';
 
-export const ShortWinner: React.FC<{comparison: Comparison}> = ({comparison}) => {
+export const ShortWinner: React.FC<{ comparison: Comparison }> = ({ comparison }) => {
   const frame = useCurrentFrame();
-  const {fps} = useVideoConfig();
+  const { fps } = useVideoConfig();
   const phones = comparison.phones;
 
   const winnerIdx = comparison.overall?.ranking.indexOf(1) ?? 0;
   const winnerPhone = phones[winnerIdx >= 0 ? winnerIdx : 0];
 
-  const enter = spring({frame, fps, config: {damping: 14, stiffness: 110}});
+  const enter = spring({ frame, fps, config: { damping: 14, stiffness: 110 } });
 
   return (
     <AbsoluteFill>
-      <Background phones={phones} />
+      <Background accents={phones.map((p) => p.accent)} layout="columns" />
 
       {/* Winner Title */}
       <div
@@ -76,8 +76,8 @@ export const ShortWinner: React.FC<{comparison: Comparison}> = ({comparison}) =>
       </div>
 
       {/* Rank Badge */}
-      <div style={{position: 'absolute', right: 540 - 180, top: 480}}>
-        <RankBadge rank={1} enterAt={15} />
+      <div style={{ position: 'absolute', right: 540 - 180, top: 480 }}>
+        <RankBadge rank={1} at={15} size={80} showSecond={false} />
       </div>
     </AbsoluteFill>
   );

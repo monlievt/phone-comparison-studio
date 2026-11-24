@@ -1,16 +1,32 @@
 // packages/core/src/db/migrate.ts
 // Applies numbered SQL migration files in order on startup.
-// Works with better-sqlite3 (synchronous). Called from apps/worker and apps/web.
+// Uses native node:sqlite via packages/core/src/db/database.ts
 
-import Database from 'better-sqlite3';
-import { readFileSync, readdirSync } from 'fs';
+import { mkdirSync, readFileSync, readdirSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { Database } from './database.js';
+
+export { Database } from './database.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = join(__dirname, '../migrations');
 
-export function migrate(db: Database.Database): void {
+function getMigrationsDir(): string {
+  const candidates = [
+    join(__dirname, '../migrations'),
+    join(__dirname, '../../src/migrations'),
+    join(process.cwd(), 'packages/core/src/migrations'),
+    join(process.cwd(), '../../packages/core/src/migrations'),
+  ];
+  for (const c of candidates) {
+    if (existsSync(c)) return c;
+  }
+  return join(__dirname, '../migrations');
+}
+
+const MIGRATIONS_DIR = getMigrationsDir();
+
+export function migrate(db: Database): void {
   // Ensure migration tracking table exists
   db.exec(`
     CREATE TABLE IF NOT EXISTS _migrations (
@@ -42,7 +58,8 @@ export function migrate(db: Database.Database): void {
   }
 }
 
-export function openDb(dataDir: string): Database.Database {
+export function openDb(dataDir: string): Database {
+  mkdirSync(dataDir, { recursive: true });
   const dbPath = join(dataDir, 'app.db');
   const db = new Database(dbPath);
   db.pragma('journal_mode = WAL');

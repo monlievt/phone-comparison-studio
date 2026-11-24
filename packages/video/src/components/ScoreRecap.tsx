@@ -26,19 +26,19 @@ export const ScoreRecap: React.FC<{comparison: Comparison}> = ({comparison}) => 
     ranking: winCounts.map((w, idx, arr) => (w >= Math.max(...arr) ? 1 : 2)),
   };
 
-  const cardWidth = n >= 3 ? 460 : 620;
+  const cardWidth = n >= 3 ? 500 : 700;
   const gap = 80;
   const startX = (1920 - (n * cardWidth + (n - 1) * gap)) / 2;
 
   return (
     <AbsoluteFill>
-      <Background phones={phones} />
+      <Background accents={phones.map((p) => p.accent)} layout="columns" />
 
       {/* Recap Title */}
       <div
         style={{
           position: 'absolute',
-          top: 100,
+          top: 60,
           width: '100%',
           textAlign: 'center',
           opacity: titleSpring,
@@ -48,24 +48,26 @@ export const ScoreRecap: React.FC<{comparison: Comparison}> = ({comparison}) => 
         <div
           style={{
             fontFamily: theme.fonts.display,
-            fontSize: 60,
-            fontWeight: 800,
+            fontSize: 66,
+            fontWeight: 900,
             color: '#ffffff',
-            letterSpacing: '2px',
+            letterSpacing: '3px',
             textTransform: 'uppercase',
+            textShadow: '0 4px 25px rgba(0,0,0,0.9)',
           }}
         >
           FINAL SCORE & CATEGORY BREAKDOWN
         </div>
         <div
           style={{
-            marginTop: 8,
+            marginTop: 10,
             fontFamily: theme.fonts.body,
-            fontSize: 22,
-            color: 'rgba(255,255,255,0.7)',
+            fontSize: 24,
+            fontWeight: 600,
+            color: 'rgba(255,255,255,0.85)',
           }}
         >
-          Calculated based on weighted specification category rankings
+          Calculated based on verified technical specification category rankings
         </div>
       </div>
 
@@ -81,14 +83,14 @@ export const ScoreRecap: React.FC<{comparison: Comparison}> = ({comparison}) => 
             style={{
               position: 'absolute',
               left: x,
-              top: 320,
+              top: 260,
               width: cardWidth,
-              padding: '40px 32px',
-              borderRadius: 24,
+              padding: '48px 44px',
+              borderRadius: 32,
               boxSizing: 'border-box',
-              background: 'rgba(18, 20, 24, 0.85)',
-              border: `2px solid ${rank === 1 ? phone.accent : 'rgba(255, 255, 255, 0.1)'}`,
-              boxShadow: rank === 1 ? `0 10px 40px ${phone.accent}44` : 'none',
+              background: 'rgba(14, 16, 22, 0.92)',
+              border: `3px solid ${rank === 1 ? phone.accent : 'rgba(255, 255, 255, 0.18)'}`,
+              boxShadow: rank === 1 ? `0 14px 50px ${phone.accent}55, 0 0 35px ${phone.accent}33` : '0 10px 40px rgba(0,0,0,0.6)',
               opacity: cardSpring,
               transform: `scale(${0.9 + cardSpring * 0.1})`,
             }}
@@ -98,58 +100,76 @@ export const ScoreRecap: React.FC<{comparison: Comparison}> = ({comparison}) => 
               <div
                 style={{
                   fontFamily: theme.fonts.display,
-                  fontSize: 38,
-                  fontWeight: 800,
+                  fontSize: 48,
+                  fontWeight: 900,
                   color: '#ffffff',
                   textTransform: 'uppercase',
+                  letterSpacing: '1px',
                 }}
               >
                 {phone.name}
               </div>
-              <RankBadge rank={rank} enterAt={30 + i * 8} />
+              <RankBadge rank={rank} at={30 + i * 8} size={58} showSecond={phones.length === 3} />
             </div>
 
             {/* Total Points Big Display */}
-            <div style={{marginTop: 36, textAlign: 'center'}}>
+            <div style={{marginTop: 38, textAlign: 'center'}}>
               <div
                 style={{
                   fontFamily: theme.fonts.display,
-                  fontSize: 84,
+                  fontSize: 104,
                   fontWeight: 900,
-                  color: rank === 1 ? '#ffffff' : 'rgba(255,255,255,0.85)',
+                  color: rank === 1 ? '#ffffff' : 'rgba(255,255,255,0.92)',
+                  letterSpacing: '2px',
+                  textShadow: rank === 1 ? `0 0 40px ${phone.accent}66` : 'none',
                 }}
               >
-                {overall.points[i]} <span style={{fontSize: 32, fontWeight: 600}}>PTS</span>
+                {overall.points[i]} <span style={{fontSize: 40, fontWeight: 700, color: '#FFD11A'}}>PTS</span>
               </div>
               <div
                 style={{
                   fontFamily: theme.fonts.body,
-                  fontSize: 20,
-                  color: 'rgba(255,255,255,0.6)',
-                  marginTop: -6,
+                  fontSize: 22,
+                  fontWeight: 600,
+                  color: 'rgba(255,255,255,0.75)',
+                  marginTop: -4,
                 }}
               >
-                Overall Score
+                Overall Comparison Score
               </div>
             </div>
 
-            {/* Category Wins */}
+            {/* Category Wins Pill - High Contrast, Crystal Clear */}
             <div
               style={{
-                marginTop: 36,
-                padding: '16px 20px',
-                borderRadius: 16,
-                background: 'rgba(255,255,255,0.06)',
+                marginTop: 40,
+                padding: '18px 28px',
+                borderRadius: 20,
+                background: 'rgba(255, 255, 255, 0.10)',
+                border: '1.5px solid rgba(255, 255, 255, 0.22)',
                 display: 'flex',
                 justifyContent: 'space-between',
+                alignItems: 'center',
                 fontFamily: theme.fonts.display,
-                fontSize: 24,
-                fontWeight: 700,
+                fontSize: 28,
+                fontWeight: 800,
                 color: '#ffffff',
               }}
             >
-              <span>Categories Won:</span>
-              <span style={{color: phone.accent}}>{winCounts[i]} Categories</span>
+              <span style={{letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)'}}>
+                Categories Won:
+              </span>
+              <span
+                style={{
+                  color: '#FFD11A',
+                  fontSize: 34,
+                  fontWeight: 900,
+                  letterSpacing: '1px',
+                  textShadow: '0 0 15px rgba(255, 209, 26, 0.6)',
+                }}
+              >
+                {winCounts[i]} Categories
+              </span>
             </div>
           </div>
         );

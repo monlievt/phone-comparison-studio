@@ -30,15 +30,18 @@ export const NameBar: React.FC<{phones: Phone[]; barHeight: number}> = ({phones,
             boxSizing: 'border-box',
             borderTop: `10px solid ${p.accent}`,
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             fontFamily: theme.fonts.display,
-            fontWeight: 700,
-            fontSize: fit(p.name, 68, (width / phones.length) * 0.9),
-            color: theme.colors.white,
+            fontWeight: 800,
+            fontSize: fit(p.name, 72, (width / phones.length) * 0.88),
+            color: '#FFFFFF',
+            textShadow: '0 2px 10px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.5)',
+            letterSpacing: '0.5px',
           }}
         >
-          {p.name}
+          <span>{p.name}</span>
         </div>
       ))}
     </div>

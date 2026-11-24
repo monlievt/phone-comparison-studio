@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "dev:all": "concurrently \"npm run dev:web\" \"npm run dev:worker\" --names web,worker --prefix-colors blue,green",
+    "start:all": "concurrently \"npm run start --workspace=apps/web\" \"npm run start --workspace=apps/worker\" --names web,worker --prefix-colors blue,green",
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:worker": "npm run dev --workspace=apps/worker",
     "db:migrate": "npm run migrate --workspace=apps/worker",

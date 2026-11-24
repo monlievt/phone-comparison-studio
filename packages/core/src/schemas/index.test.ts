@@ -96,6 +96,20 @@ describe('validateNumbers', () => {
     ]);
     expect(result).toEqual([]);
   });
+
+  it('ignores trailing sentence punctuation attached to model numbers (e.g. a07.)', () => {
+    const withA07 = {
+      ...base,
+      phones: [
+        { ...base.phones[0], name: 'motorola g06' },
+        { ...base.phones[1], name: 'samsung a07' },
+      ],
+    };
+    const result = validateNumbers(withA07, [
+      'Full comparison between motorola g06 vs samsung a07.',
+    ]);
+    expect(result).toEqual([]);
+  });
 });
 
 describe('ComparisonSchema', () => {

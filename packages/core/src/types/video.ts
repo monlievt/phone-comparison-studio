@@ -2,6 +2,8 @@
 // Re-export the existing Remotion render contract from packages/video,
 // extended with the new fields added in DATA_MODEL.md §3.
 
+import type { PhoneShape } from '../schemas/index.js';
+
 // --- Re-exported base types (from packages/video/src/types.ts) ---
 export type PhoneImage = {
   src: string;        // path inside /public (after Image Resolver copies it), or URL
@@ -21,6 +23,7 @@ export type Phone = {
   soc?: string;
   releaseDate?: string;
   priceNote?: string; // e.g. 'Launch price, approx.'
+  shape?: PhoneShape;
 };
 
 export type CategoryValue = {
@@ -68,6 +71,7 @@ export type Comparison = {
   currency: 'USD';
   overall?: { ranking: number[]; points: number[] };
   hook?: string;                        // Short hook text, <= 40 chars
+  themePreset?: string;                 // Motion preset: gradientDrift, gridBreath, blobs, liveGrain, rotatingShapes
   labels?: Record<string, string>;      // category_key -> label override
   credits: string[];                    // data/image/music credits for description
 };
@@ -77,24 +81,5 @@ export type SegmentProps = { comparison: Comparison; categoryIndex: number };
 export type VideoProps = { comparison: Comparison };
 export type BenchmarkProps = { comparison: Comparison; benchmarkIndex: number };
 
-// --- PhoneShape: drives the ParametricPhone component ---
-export type FrontCameraStyle =
-  | 'punch_center'
-  | 'punch_left'
-  | 'punch_right'
-  | 'waterdrop'
-  | 'notch'
-  | 'pill'
-  | 'under_display'
-  | 'unknown';
-
-export type PhoneShape = {
-  bodyMM: { h: number; w: number; d: number } | null;
-  screenInch: number | null;
-  aspect: number | null;               // e.g. 20/9 -> 2.22
-  frontCamera: FrontCameraStyle;
-  edge: 'flat' | 'curved' | 'dual_curve' | 'unknown';
-  frame: 'flat' | 'round' | 'unknown';
-  rearLenses: 1 | 2 | 3 | 4 | null;
-  evidence: Record<string, string | null>; // verbatim snippet per field
-};
+// --- Re-export PhoneShape from schemas ---
+export type { PhoneShape } from '../schemas/index.js';

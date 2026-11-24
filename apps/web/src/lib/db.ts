@@ -1,9 +1,8 @@
 // apps/web/src/lib/db.ts
-import Database from 'better-sqlite3';
 import { join } from 'path';
-import { openDb } from '@phone-studio/core';
+import { Database, openDb } from '@phone-studio/core';
 
-let _db: Database.Database | null = null;
+let _db: Database | null = null;
 
 export function getDb(): Database.Database {
   if (_db) return _db;

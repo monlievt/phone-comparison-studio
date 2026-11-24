@@ -1,6 +1,6 @@
 // packages/collectors/src/specs/spec-collector.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import Database from 'better-sqlite3';
+import { Database } from '@phone-studio/core';
 import { SpecCollector, verifyNumericTokensInText } from './spec-collector.js';
 
 describe('verifyNumericTokensInText', () => {
@@ -86,5 +86,49 @@ describe('SpecCollector', () => {
     expect(res.specs.battery.confidence).toBeLessThan(0.5);
     // charging 45 was in page text, confidence maintained at 0.9
     expect(res.specs.charging.confidence).toBe(0.9);
+  });
+
+  it('reuses cached phone specs without calling LLM again and upserts same phoneId on forceRefresh', async () => {
+    const callJson = vi.fn().mockResolvedValue({
+      data: {
+        phone: {
+          brand: 'OnePlus',
+          model: '13R',
+          variant: null,
+          releaseDate: '2026-01-10',
+          soc: 'Snapdragon 8 Gen 3',
+          priceUSD: 599,
+          priceCurrencyOriginal: null,
+          priceOriginal: null,
+        },
+        fields: {
+          display_type: { value: 'LTPO AMOLED', evidence: 'LTPO AMOLED display' },
+          resolution: { value: '1264 x 2780', evidence: '1264 x 2780' },
+          refresh_rate: { value: '120Hz', evidence: '120Hz' },
+          chipset: { value: 'Snapdragon 8 Gen 3', evidence: 'Snapdragon 8 Gen 3' },
+          battery: { value: '6000 mAh', evidence: '6000 mAh' },
+          charging: { value: '80W', evidence: '80W' },
+        },
+      },
+    });
+    const mockRouter = { callJson } as unknown as ConstructorParameters<typeof SpecCollector>[1];
+    const collector = new SpecCollector(db, mockRouter);
+
+    const first = await collector.collect({ brand: 'OnePlus', model: '13R' });
+    expect(first.fromCache).toBeUndefined();
+    expect(callJson).toHaveBeenCalledTimes(1);
+
+    // Second call should hit SQLite phone cache (0 additional LLM calls)
+    const second = await collector.collect({ brand: 'OnePlus', model: '13R' });
+    expect(second.fromCache).toBe(true);
+    expect(second.phoneId).toBe(first.phoneId);
+    expect(callJson).toHaveBeenCalledTimes(1);
+
+    // forceRefresh reuses existing phoneId instead of duplicating phones row
+    const refreshed = await collector.collect({ brand: 'OnePlus', model: '13R', forceRefresh: true });
+    expect(refreshed.phoneId).toBe(first.phoneId);
+    expect(callJson).toHaveBeenCalledTimes(2);
+    const phoneCount = (db.prepare('SELECT count(*) as c FROM phones').get() as { c: number }).c;
+    expect(phoneCount).toBe(1);
   });
 });

@@ -1,6 +1,6 @@
 // packages/collectors/src/images/image-resolver.test.ts
 import { describe, it, expect, beforeEach } from 'vitest';
-import Database from 'better-sqlite3';
+import { Database } from '@phone-studio/core';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { ImageResolver } from './image-resolver.js';

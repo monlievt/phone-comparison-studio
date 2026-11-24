@@ -3,23 +3,11 @@
 // Pure SQLite — no Redis needed.
 // See PIPELINE_AND_JOBS.md for rules.
 
-import Database from 'better-sqlite3';
+import { Database } from './database.js';
 import { ulid } from 'ulid';
+import { JobState, JobType } from '../schemas/index.js';
 
-export type JobState = 'queued' | 'running' | 'done' | 'failed' | 'blocked';
-export type JobType =
-  | 'find_topics'
-  | 'collect_specs'
-  | 'collect_benchmarks'
-  | 'resolve_images'
-  | 'build_data'
-  | 'generate_copy'
-  | 'render_preview'
-  | 'render_final'
-  | 'render_thumbnail'
-  | 'build_metadata'
-  | 'handoff'
-  | 'cleanup';
+export type { JobState, JobType };
 
 export interface Job {
   id: string;
@@ -106,7 +94,7 @@ export class JobQueue {
 
     if (result.changes === 0) return null; // lost the race
 
-    return this.db.prepare('SELECT * FROM jobs WHERE id=?').get(candidate.id) as Job;
+    return this.db.prepare('SELECT * FROM jobs WHERE id=?').get(candidate.id) as unknown as Job;
   }
 
   heartbeat(jobId: string): void {
@@ -181,7 +169,7 @@ export class JobQueue {
          WHERE state='running' AND lease_until < ?`
       )
       .run(now, now);
-    return result.changes;
+    return Number(result.changes);
   }
 
   log(jobId: string, level: 'info' | 'warn' | 'error', message: string): void {

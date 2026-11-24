@@ -2,7 +2,7 @@
 // Imports benchmark snapshots from CSV into benchmark_snapshots and benchmark_scores.
 // Specification: docs/MODULES.md §3
 
-import Database from 'better-sqlite3';
+import { Database } from '@phone-studio/core';
 import { ulid } from 'ulid';
 
 export interface BenchmarkCsvRow {
@@ -18,6 +18,7 @@ export interface BenchmarkImportResult {
   version: string;
   rowCount: number;
   matchedCount: number;
+  unmatchedDevices: string[];
 }
 
 export function parseBenchmarkCsv(csvContent: string): { headers: string[]; rows: BenchmarkCsvRow[] } {
@@ -44,7 +45,9 @@ export function parseBenchmarkCsv(csvContent: string): { headers: string[]; rows
   const rows: BenchmarkCsvRow[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',').map((c) => c.trim());
+    const rawCols = lines[i].match(/(?:[^\",]+|\"[^\"]*\")+/g)?.map((c) => c.replace(/^\"|\"$/g, '').trim()) ??
+      lines[i].split(',').map((c) => c.trim());
+    const cols = rawCols;
     const device = cols[deviceIdx];
     const mainStr = cols[mainIdx];
     const mainNum = parseFloat(mainStr.replace(/,/g, ''));
@@ -87,21 +90,31 @@ export function importBenchmarkCsv(
   ).run(snapshotId, source, version, period, now, permissionNote);
 
   let matchedCount = 0;
+  const unmatchedDevices: string[] = [];
 
-  // 2. Insert score records
+  // 2. Insert score records only for matched phones (avoids FK violation when foreign_keys=ON)
   for (const row of rows) {
-    // Attempt match with phones table
     const phone = db
-      .prepare('SELECT id FROM phones WHERE brand || " " || model = ? OR model = ? LIMIT 1')
+      .prepare(
+        "SELECT id FROM phones WHERE LOWER(brand || ' ' || model) = LOWER(?) OR LOWER(model) = LOWER(?) LIMIT 1"
+      )
       .get(row.device, row.device) as { id: string } | undefined;
 
-    const phoneId = phone ? phone.id : ulid(); // Fallback ID if phone not yet created
-    if (phone) matchedCount++;
+    if (!phone) {
+      unmatchedDevices.push(row.device);
+      continue;
+    }
+
+    matchedCount++;
 
     db.prepare(
-      `INSERT OR REPLACE INTO benchmark_scores (id, snapshot_id, phone_id, variant_used, main, parts_json)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    ).run(ulid(), snapshotId, phoneId, row.variant ?? null, row.main, JSON.stringify(row.parts));
+      `INSERT INTO benchmark_scores (id, snapshot_id, phone_id, variant_used, main, parts_json)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(snapshot_id, phone_id) DO UPDATE SET
+         variant_used = excluded.variant_used,
+         main = excluded.main,
+         parts_json = excluded.parts_json`
+    ).run(ulid(), snapshotId, phone.id, row.variant ?? null, row.main, JSON.stringify(row.parts));
   }
 
   return {
@@ -110,5 +123,6 @@ export function importBenchmarkCsv(
     version,
     rowCount: rows.length,
     matchedCount,
+    unmatchedDevices,
   };
 }

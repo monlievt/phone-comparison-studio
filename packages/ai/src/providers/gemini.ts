@@ -10,7 +10,12 @@ export async function callGemini(params: ProviderCallParams): Promise<string> {
 
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${params.model}:generateContent?key=${params.apiKey}`;
 
-  const body: any = {
+  const body: {
+    contents: Array<{ role: string; parts: Array<{ text: string }> }>;
+    systemInstruction: { parts: Array<{ text: string }> };
+    generationConfig: { temperature: number; responseMimeType?: string };
+    tools?: Array<{ googleSearch: Record<string, never> }>;
+  } = {
     contents: [
       {
         role: 'user',
@@ -21,13 +26,15 @@ export async function callGemini(params: ProviderCallParams): Promise<string> {
       parts: [{ text: params.systemPrompt }],
     },
     generationConfig: {
-      temperature: params.temperature,
-      responseMimeType: 'application/json',
+      temperature: params.temperature ?? 0.1,
     },
   };
 
+  // Google Gemini API rejects responseMimeType: 'application/json' when search tools are enabled.
   if (params.supportsGrounding) {
     body.tools = [{ googleSearch: {} }];
+  } else {
+    body.generationConfig.responseMimeType = 'application/json';
   }
 
   const res = await fetch(endpoint, {
@@ -41,11 +48,20 @@ export async function callGemini(params: ProviderCallParams): Promise<string> {
     throw new Error(`Gemini API error (HTTP ${res.status}): ${errText}`);
   }
 
-  const data = (await res.json()) as any;
+  const data = (await res.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
   const candidate = data.candidates?.[0];
   if (!candidate || !candidate.content?.parts?.[0]?.text) {
     throw new Error('Gemini API returned an empty or invalid candidate');
   }
 
-  return candidate.content.parts[0].text;
+  let text = candidate.content.parts[0].text.trim();
+
+  // Strip markdown code fences if model wrapped response in ```json ... ```
+  if (text.startsWith('```')) {
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  }
+
+  return text;
 }

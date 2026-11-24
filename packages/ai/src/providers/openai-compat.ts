@@ -17,7 +17,7 @@ export async function callOpenAiCompat(params: ProviderCallParams): Promise<stri
       { role: 'system', content: params.systemPrompt },
       { role: 'user', content: params.userPrompt },
     ],
-    temperature: params.temperature,
+    temperature: params.temperature ?? 0.1,
     response_format: { type: 'json_object' },
   };
 
@@ -41,5 +41,10 @@ export async function callOpenAiCompat(params: ProviderCallParams): Promise<stri
     throw new Error('OpenAI-compatible API returned empty message content');
   }
 
-  return content;
+  let text = content.trim();
+  if (text.startsWith('```')) {
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  }
+
+  return text;
 }

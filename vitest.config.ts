@@ -6,6 +6,11 @@ export default defineConfig({
     environment: 'node',
     include: ['packages/*/src/**/*.test.ts', 'apps/*/src/**/*.test.ts'],
     exclude: ['node_modules', 'packages/video/**'],
+    server: {
+      deps: {
+        external: ['node:sqlite'],
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

@@ -7,7 +7,7 @@ import { JobQueue } from '@phone-studio/core';
 export async function GET() {
   const db = getDb();
   const topics = db
-    .prepare('SELECT * FROM topics WHERE status = "proposed" ORDER BY score DESC, created_at DESC')
+    .prepare("SELECT * FROM topics WHERE status = 'proposed' ORDER BY score DESC, created_at DESC")
     .all();
 
   const formatted = topics.map((t: any) => ({
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   }
 
   if (action === 'reject') {
-    db.prepare('UPDATE topics SET status = "rejected" WHERE id = ?').run(topicId);
+    db.prepare("UPDATE topics SET status = 'rejected' WHERE id = ?").run(topicId);
     return NextResponse.json({ success: true, status: 'rejected' });
   }
 
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     now
   );
 
-  db.prepare('UPDATE topics SET status = "approved" WHERE id = ?').run(topicId);
+  db.prepare("UPDATE topics SET status = 'approved' WHERE id = ?").run(topicId);
 
   // Enqueue collect_specs job
   const queue = new JobQueue(db);

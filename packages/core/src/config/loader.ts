@@ -18,8 +18,14 @@ const EnvSchema = z.object({
   GROQ_API_KEY: z.string().optional(),
 
   LLM_CALLS_PER_VIDEO: z.coerce.number().default(8),
-  GEMINI_DAILY_LIMIT: z.coerce.number().optional(),
-  GROQ_DAILY_LIMIT: z.coerce.number().default(1000),
+  GEMINI_DAILY_LIMIT: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : Number(val)),
+    z.number().positive().optional()
+  ),
+  GROQ_DAILY_LIMIT: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? 1000 : Number(val)),
+    z.number().positive().default(1000)
+  ),
 
   RENDER_CONCURRENCY: z.coerce.number().default(3),
   MAX_DISK_GB: z.coerce.number().default(20),

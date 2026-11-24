@@ -54,7 +54,3 @@ export const PhoneMock: React.FC<{
     </div>
   );
 };
-
-    </div>
-  );
-};

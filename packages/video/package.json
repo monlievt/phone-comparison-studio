@@ -14,7 +14,14 @@
     "render:long2": "remotion render LongVideo2 out/long2.mp4",
     "render:long3": "remotion render LongVideo3 out/long3.mp4",
     "render:short2": "remotion render ShortVideo2 out/short2.mp4",
-    "render:short3": "remotion render ShortVideo3 out/short3.mp4"
+    "render:short3": "remotion render ShortVideo3 out/short3.mp4",
+    "render:v2-long2": "remotion render LongV2-2 out/v2-long2.mp4",
+    "render:v2-long3": "remotion render LongV2-3 out/v2-long3.mp4",
+    "render:v2-short2": "remotion render ShortV2-2 out/v2-short2.mp4",
+    "render:v2-short3": "remotion render ShortV2-3 out/v2-short3.mp4",
+    "still:v2-thumb2": "remotion still ThumbnailV2-2 out/v2-thumb2.png",
+    "still:v2-thumb3": "remotion still ThumbnailV2-3 out/v2-thumb3.png",
+    "preview:v2-short2": "remotion render ShortV2-2 out/v2-short2-preview.mp4 --scale=0.4 --crf=34"
   },
   "dependencies": {
     "@remotion/cli": "4.0.542",

@@ -1,6 +1,6 @@
 // packages/ai/src/router.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import Database from 'better-sqlite3';
+import { Database } from '@phone-studio/core';
 import { z } from 'zod';
 import { LlmRouter } from './router.js';
 import { generateTemplateCopy, CopyAllSchema } from './prompts/index.js';
@@ -40,7 +40,11 @@ describe('LlmRouter', () => {
 
     const router = new LlmRouter({
       db,
-      aiConfig: { providers: [{ id: 'gemini-pro', kind: 'gemini', model: 'gemini-2.5-pro' }] },
+      aiConfig: {
+        providers: [{ id: 'gemini-pro', kind: 'gemini', model: 'gemini-2.5-pro' }],
+        perVideoCallCap: 8,
+        maxAttemptsPerProvider: 2,
+      },
       apiKeys: {},
     });
 
@@ -66,7 +70,11 @@ describe('LlmRouter', () => {
 
     const router = new LlmRouter({
       db,
-      aiConfig: { providers: [{ id: 'gemini-pro', kind: 'gemini', model: 'gemini-2.5-pro' }] },
+      aiConfig: {
+        providers: [{ id: 'gemini-pro', kind: 'gemini', model: 'gemini-2.5-pro' }],
+        perVideoCallCap: 8,
+        maxAttemptsPerProvider: 2,
+      },
       apiKeys: { gemini: 'key' },
       dailyLimits: { 'gemini-pro': 10 }, // Limit reached!
     });
@@ -91,6 +99,7 @@ describe('LlmRouter', () => {
           { id: 'gemini-pro', kind: 'gemini', model: 'gemini-2.5-pro' },
           { id: 'groq-free', kind: 'openai-compat', model: 'llama-3.3-70b-versatile', baseUrl: 'https://api.groq.com/openai/v1' },
         ],
+        perVideoCallCap: 8,
         maxAttemptsPerProvider: 1,
       },
       apiKeys: { gemini: 'key', groq: 'key' },

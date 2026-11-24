@@ -1,15 +1,14 @@
 // apps/worker/src/render-service.ts
-// Handles actual video rendering using @remotion/bundler and @remotion/renderer.
+// Handles actual video rendering using Remotion CLI and @remotion/renderer.
 // Specification: docs/ARCHITECTURE.md §4 and docs/VIDEO_SPEC.md §7
 
-import { bundle } from '@remotion/bundler';
-import { renderMedia, renderStill, selectComposition } from '@remotion/renderer';
-import { join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { spawn } from 'child_process';
+import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'fs';
+import { dirname, resolve } from 'path';
 
 export interface RenderOptions {
   compositionId: string;
-  inputProps: { comparison: any };
+  inputProps: { comparison: Record<string, unknown>; format?: string; text?: string; [key: string]: unknown };
   outputPath: string;
   isThumbnail?: boolean;
   scale?: number;
@@ -18,10 +17,8 @@ export interface RenderOptions {
 }
 
 export class RemotionRenderService {
-  private bundleLocation: string | null = null;
   private videoEntryPath: string;
   private rendersDir: string;
-  private isBundling = false;
 
   constructor(videoEntryPath: string, rendersDir: string) {
     this.videoEntryPath = videoEntryPath;
@@ -33,92 +30,131 @@ export class RemotionRenderService {
   }
 
   /**
-   * Bundles the Remotion project once and reuses the bundle location across renders.
-   */
-  async ensureBundled(): Promise<string> {
-    if (this.bundleLocation) return this.bundleLocation;
-    if (this.isBundling) {
-      // Wait for ongoing bundling to complete
-      while (this.isBundling) {
-        await new Promise((r) => setTimeout(r, 500));
-      }
-      if (this.bundleLocation) return this.bundleLocation;
-    }
-
-    this.isBundling = true;
-    console.log('[render-service] Bundling Remotion video project (one-time operation)...');
-
-    try {
-      this.bundleLocation = await bundle({
-        entryPoint: this.videoEntryPath,
-        webpackOverride: (config) => config,
-      });
-      console.log('[render-service] Remotion project bundled successfully at:', this.bundleLocation);
-      return this.bundleLocation;
-    } finally {
-      this.isBundling = false;
-    }
-  }
-
-  /**
    * Renders a still image (YouTube thumbnail 1280x720).
    */
   async renderThumbnail(opts: RenderOptions): Promise<string> {
-    const bundleLocation = await this.ensureBundled();
+    const absOutputPath = resolve(opts.outputPath);
+    const parentDir = dirname(absOutputPath);
+    if (!existsSync(parentDir)) {
+      mkdirSync(parentDir, { recursive: true });
+    }
 
-    const composition = await selectComposition({
-      serveUrl: bundleLocation,
-      id: opts.compositionId,
-      inputProps: opts.inputProps,
-    });
+    const tempPropsFile = `${absOutputPath}.props.json`;
+    writeFileSync(tempPropsFile, JSON.stringify(opts.inputProps), 'utf-8');
 
-    console.log(`[render-service] Rendering thumbnail (${opts.compositionId}) to: ${opts.outputPath}`);
+    console.log(`[render-service] Rendering thumbnail (${opts.compositionId}) to: ${absOutputPath}`);
 
-    await renderStill({
-      composition,
-      serveUrl: bundleLocation,
-      output: opts.outputPath,
-      inputProps: opts.inputProps,
-      imageFormat: 'png',
-    });
+    const args = [
+      'remotion',
+      'still',
+      'src/index.ts',
+      opts.compositionId,
+      absOutputPath,
+      `--props=${tempPropsFile}`,
+      '--image-format=png',
+    ];
 
-    return opts.outputPath;
+    try {
+      await this.runProcess('npx', args, opts.onProgress);
+      return absOutputPath;
+    } finally {
+      if (existsSync(tempPropsFile)) {
+        try { unlinkSync(tempPropsFile); } catch {}
+      }
+    }
   }
 
   /**
    * Renders an MP4 video (Long 16:9 or Short 9:16).
    */
   async renderVideo(opts: RenderOptions): Promise<string> {
-    const bundleLocation = await this.ensureBundled();
+    const absOutputPath = resolve(opts.outputPath);
+    const parentDir = dirname(absOutputPath);
+    if (!existsSync(parentDir)) {
+      mkdirSync(parentDir, { recursive: true });
+    }
 
-    const composition = await selectComposition({
-      serveUrl: bundleLocation,
-      id: opts.compositionId,
-      inputProps: opts.inputProps,
-    });
-
-    console.log(`[render-service] Rendering video (${opts.compositionId}) to: ${opts.outputPath}`);
+    const tempPropsFile = `${absOutputPath}.props.json`;
+    writeFileSync(tempPropsFile, JSON.stringify(opts.inputProps), 'utf-8');
 
     const isPreview = opts.scale && opts.scale < 1.0;
+    const concurrency = isPreview ? 2 : 1; // Final render strictly concurrency 1 per ARCHITECTURE.md §1
+    const crf = opts.crf ?? (isPreview ? 30 : 18);
+    const scale = opts.scale ?? 1.0;
 
-    await renderMedia({
-      composition,
-      serveUrl: bundleLocation,
-      codec: 'h264',
-      outputLocation: opts.outputPath,
-      inputProps: opts.inputProps,
-      crf: opts.crf ?? (isPreview ? 30 : 18),
-      scale: opts.scale ?? 1.0,
-      concurrency: isPreview ? 2 : 1, // Final render strictly concurrency 1 per ARCHITECTURE.md §1
-      onProgress: ({ renderedFrames, totalFrames }) => {
-        if (totalFrames > 0 && opts.onProgress) {
-          const pct = Math.round((renderedFrames / totalFrames) * 100);
-          opts.onProgress(pct);
+    console.log(`[render-service] Rendering video (${opts.compositionId}) to: ${absOutputPath}`);
+
+    const args = [
+      'remotion',
+      'render',
+      'src/index.ts',
+      opts.compositionId,
+      absOutputPath,
+      `--props=${tempPropsFile}`,
+      '--codec=h264',
+      `--concurrency=${concurrency}`,
+      `--crf=${crf}`,
+      `--scale=${scale}`,
+    ];
+
+    try {
+      await this.runProcess('npx', args, opts.onProgress);
+      console.log(`[render-service] Video render completed: ${absOutputPath}`);
+      return absOutputPath;
+    } finally {
+      if (existsSync(tempPropsFile)) {
+        try { unlinkSync(tempPropsFile); } catch {}
+      }
+    }
+  }
+
+  private runProcess(cmd: string, args: string[], onProgress?: (pct: number) => void): Promise<void> {
+    const pkgVideoDir = dirname(dirname(this.videoEntryPath));
+    const quotedArgs = args.map((a) => (a.includes(' ') || a.includes('"') ? `"${a.replace(/"/g, '\\"')}"` : a));
+    const commandLine = `${cmd} ${quotedArgs.join(' ')}`;
+
+    return new Promise((resolve, reject) => {
+      const proc = spawn(commandLine, {
+        cwd: pkgVideoDir,
+        shell: true,
+      });
+
+      let fullOutput = '';
+      let errOutput = '';
+
+      proc.stdout?.on('data', (data) => {
+        const text = data.toString();
+        fullOutput += text;
+        // Parse progress e.g. "Rendering frames 120/750" or "Encoding video 50/750"
+        const match = text.match(/(?:Rendering frames|Encoding video)\s+(\d+)\/(\d+)/);
+        if (match && onProgress) {
+          const current = parseInt(match[1], 10);
+          const total = parseInt(match[2], 10);
+          if (total > 0) {
+            const pct = Math.round((current / total) * 100);
+            onProgress(pct);
+          }
         }
-      },
-    });
+      });
 
-    console.log(`[render-service] Video render completed: ${opts.outputPath}`);
-    return opts.outputPath;
+      proc.stderr?.on('data', (data) => {
+        const text = data.toString();
+        errOutput += text;
+        fullOutput += text;
+      });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          console.error(`[render-service] Command failed (exit code ${code}):\n${fullOutput}`);
+          reject(new Error(`Remotion CLI exited with code ${code}:\n${(errOutput || fullOutput).slice(-2000)}`));
+        }
+      });
+
+      proc.on('error', (err) => {
+        reject(err);
+      });
+    });
   }
 }

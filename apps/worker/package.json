@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node --watch --experimental-vm-modules dist/main.js",
     "build": "tsc --project tsconfig.json",
-    "start": "node dist/main.js",
+    "start": "node --env-file=../../.env dist/main.js",
     "migrate": "node dist/db/migrate.js",
     "typecheck": "tsc --noEmit"
   },
@@ -17,11 +17,9 @@
     "@phone-studio/publisher": "*",
     "@phone-studio/video": "*",
     "@remotion/renderer": "4.0.542",
-    "@remotion/bundler": "4.0.542",
-    "better-sqlite3": "^11.5.0"
+    "@remotion/bundler": "4.0.542"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"

@@ -22,7 +22,9 @@ export const ComparisonStatusSchema = z.enum([
   'HANDED_OFF',
   'PUBLISHED',
   'FAILED',
+  'FAILED_QA',
   'SKIPPED_LOW_DATA',
+  'CANCELLED',
 ]);
 export type ComparisonStatus = z.infer<typeof ComparisonStatusSchema>;
 
@@ -31,18 +33,60 @@ export const JobStateSchema = z.enum(['queued', 'running', 'done', 'failed', 'bl
 export type JobState = z.infer<typeof JobStateSchema>;
 
 export const JobTypeSchema = z.enum([
+  'autopilot_tick',
   'track_candidates',
   'find_topics',
   'collect_specs',
+  'collect_benchmarks',
   'collect_images',
+  'resolve_images',
   'compute_verdict',
   'generate_copy',
   'render_preview',
   'render_final',
   'render_thumbnail',
+  'build_metadata',
   'handoff',
+  'cleanup',
 ]);
 export type JobType = z.infer<typeof JobTypeSchema>;
+
+// --- Studio & Autopilot Settings ---
+export const AutopilotSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  mode: z.enum(['autopilot', 'manual']).default('manual'),
+  videosPerWeek: z.number().int().min(1).max(21).default(4),
+  topicScoreMin: z.number().min(0).max(100).default(60),
+  minCategories: z.number().int().min(3).max(17).default(8),
+  requiredCategories: z.array(z.string()).default(['price', 'battery', 'display_type', 'chipset']),
+  criticalCategories: z.array(z.string()).default(['price', 'battery', 'refresh_rate', 'ram', 'charging']),
+  minConfidence: z.number().min(0.4).max(1.0).default(0.8),
+  holdHours: z.number().min(0).max(168).default(24),
+  maxConsecutiveFailures: z.number().int().min(1).max(10).default(2),
+  dailyLlmReserve: z.number().min(0).max(0.5).default(0.2),
+  defaultTemplate: z.enum(['v1', 'v2', 'v3']).default('v3'),
+  webhookUrl: z.string().url().nullable().optional(),
+});
+export type AutopilotSettings = z.infer<typeof AutopilotSettingsSchema>;
+
+export const BrandPolicySchema = z.object({
+  brand: z.string(),
+  termsUrl: z.string().default(''),
+  allowed: z.boolean().nullable().default(null),
+  allowsModification: z.boolean().default(false),
+  logoAllowed: z.boolean().default(false),
+});
+export type BrandPolicy = z.infer<typeof BrandPolicySchema>;
+
+export const StudioSettingsSchema = z.object({
+  autopilot: AutopilotSettingsSchema.default({}),
+  excludedCategories: z.array(z.string()).default([]),
+  lastMotionPreset: z.string().nullable().default(null),
+  autopilotPaused: z.boolean().default(false),
+  autopilotPauseReason: z.string().nullable().default(null),
+  consecutiveFailures: z.number().int().min(0).default(0),
+});
+export type StudioSettings = z.infer<typeof StudioSettingsSchema>;
 
 // --- Phone Candidate (Auto Discovery) ---
 export const CandidateSourceSchema = z.enum([
@@ -250,6 +294,19 @@ export function validateNumbers(
 
   for (const phone of c.phones) {
     if (phone.priceUSD !== undefined) dataNumbers.add(String(phone.priceUSD));
+    // Numbers embedded in phone model names (e.g., "Galaxy S25", "iPhone 16", "12R") are valid facts
+    extractNumbers(phone.name).forEach((n) => dataNumbers.add(n));
+    if (phone.soc) extractNumbers(phone.soc).forEach((n) => dataNumbers.add(n));
+    if (phone.releaseDate) extractNumbers(phone.releaseDate).forEach((n) => dataNumbers.add(n));
+  }
+
+  // Allow current year in titles/copy (e.g. "(2026)")
+  dataNumbers.add(String(new Date().getFullYear()));
+  // Allow overall points
+  if (c.overall) {
+    for (const pt of c.overall.points) {
+      dataNumbers.add(String(pt));
+    }
   }
 
   for (const bm of c.benchmarks ?? []) {
@@ -273,7 +330,9 @@ export function validateNumbers(
   return offenders;
 }
 
-/** Extract numeric tokens (integers and decimals) from a string */
+/** Extract numeric tokens (integers and decimals) from a string, stripping trailing sentence punctuation */
 function extractNumbers(s: string): string[] {
-  return (s.match(/\d[\d,.]*/g) ?? []).map((n) => n.replace(/,/g, ''));
+  return (s.match(/\d[\d,.]*/g) ?? [])
+    .map((n) => n.replace(/,/g, '').replace(/\.+$/, ''))
+    .filter((n) => n.length > 0);
 }

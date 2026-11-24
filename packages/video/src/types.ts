@@ -7,12 +7,25 @@ export type PhoneImage = {
   author?: string;
 };
 
+// Drives the parametric (illustrated) phone when no licensed photo exists. Every field is optional:
+// unknown values fall back to typical defaults at render time. Source: spec collector, with evidence.
+export type PhoneShape = {
+  bodyMM?: {h: number; w: number; d: number} | null;
+  screenInch?: number | null;
+  aspect?: number | null; // screen height / width, e.g. 2.22 for 20:9
+  frontCamera?: 'punch_center' | 'punch_left' | 'punch_right' | 'waterdrop' | 'notch' | 'pill' | 'under_display' | 'unknown';
+  edge?: 'flat' | 'curved' | 'dual_curve' | 'unknown';
+  frame?: 'flat' | 'round' | 'unknown';
+  rearLenses?: 1 | 2 | 3 | 4 | null; // reserved: rear view is not drawn yet
+};
+
 export type Phone = {
   id: string;
   name: string;
   accent: string; // dominant color, drives the background field of this phone
   priceUSD?: number;
   image?: PhoneImage; // when missing, a generic device mockup is drawn
+  shape?: PhoneShape; // used by the V2 template's parametric phone
 };
 
 export type CategoryValue = {
@@ -33,6 +46,10 @@ export type Comparison = {
   phones: Phone[]; // 2 or 3
   categories: Category[];
   benchmarks?: BenchmarkData[]; // each one becomes a final segment, only when every phone has a score
+  title?: string;
+  overall?: { ranking: number[]; points: number[] };
+  hook?: string;
+  themePreset?: string;
 };
 
 export type SegmentProps = {comparison: Comparison; categoryIndex: number};

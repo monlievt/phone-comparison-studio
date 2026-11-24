@@ -9,6 +9,9 @@ export interface CallJsonOptions<T> {
   schema: z.ZodType<T>;
   temperature?: number;
   skipCache?: boolean;
+  cacheTtlDays?: number;              // default 30 days per ARCHITECTURE.md §5
+  comparisonId?: string;              // tracks per-video LLM call cap (<= 8)
+  requireGrounding?: boolean;         // prioritize providers with supportsGrounding: true
 }
 
 export interface LlmCallResult<T> {
